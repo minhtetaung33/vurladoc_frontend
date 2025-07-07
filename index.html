@@ -1,0 +1,2755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VURLA Project Hub - Permissions Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" xintegrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            --black: #0a0908;
+            --gunmetal: #22333b;
+            --almond: #eae0d5;
+            --khaki: #c6ac8f;
+            --walnut-brown: #5e503f;
+        }
+        .nav-link-active { background-color: var(--walnut-brown) !important; color: white; }
+        .modal-backdrop { transition: opacity 0.3s ease; }
+        .text-outline { color: transparent; -webkit-text-stroke: 1px var(--khaki); }
+        .file-item-active, .contract-row-active { background-color: #0a09081a; }
+        .custom-category-link .delete-category-btn { opacity: 0; transition: opacity 0.2s ease-in-out; }
+        .custom-category-link:hover .delete-category-btn { opacity: 1; }
+        #logo-container img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+        .collapsible-header i { transition: transform 0.3s ease; }
+        .collapsible-header.open i { transform: rotate(180deg); }
+
+        /* Annotation Tool Styles */
+        #fullscreen-content-wrapper.is-panning { cursor: grabbing; }
+        #fullscreen-content-wrapper.is-drawing { cursor: crosshair; }
+        #fullscreen-content-wrapper.is-placing-callout { cursor: crosshair; }
+        .tool-active { background-color: #ffffff30; border-radius: 0.375rem; }
+        
+        /* Callout Styles */
+        .callout-anchor { position: absolute; width: 10px; height: 10px; background-color: #f59e0b; border-radius: 50%; border: 2px solid white; transform: translate(-50%, -50%); }
+        .callout-box { position: absolute; width: 250px; z-index: 20; }
+        .callout-box.is-draggable { cursor: grab; }
+        .callout-box.is-draggable:active { cursor: grabbing; }
+        #callout-connector-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 19; }
+        .callout-connector { stroke: #f59e0b; stroke-width: 2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+        
+        #drawing-canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10; }
+        #fullscreen-content-wrapper.is-drawing #drawing-canvas { pointer-events: auto; }
+        #color-picker { -webkit-appearance: none; -moz-appearance: none; appearance: none; width: 2.5rem; height: 2.5rem; background-color: transparent; border: none; cursor: pointer; }
+        #color-picker::-webkit-color-swatch { border-radius: 50%; border: 2px solid white; }
+        #color-picker::-moz-color-swatch { border-radius: 50%; border: 2px solid white; }
+        #stroke-size-picker { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1em; padding-right: 2rem; }
+
+        /* Form Page Styles */
+        .form-page-area label {
+            @apply block text-sm font-medium text-gray-700 mb-1;
+        }
+        .form-page-area input[type="text"],
+        .form-page-area input[type="date"],
+        .form-page-area input[type="file"],
+        .form-page-area input[type="tel"],
+        .form-page-area input[type="email"],
+        .form-page-area select {
+            @apply mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-sm;
+        }
+        .form-page-area input[type="file"] { @apply text-gray-600; }
+        .collapsible-form-container { transition: all 0.3s ease-in-out; max-height: 0; overflow: hidden; }
+        .collapsible-form-container.open { max-height: 500px; /* Adjust as needed */ }
+        
+        /* Calendar View Styles */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+        .calendar-day { border: 1px solid #d1c7bc; min-height: 120px; }
+        .calendar-day.other-month { background-color: #eae0d580; }
+        .permit-event {
+            padding: 2px 4px;
+            margin: 2px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: white;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .permit-event-submission { background-color: #3b82f6; } /* blue-500 */
+        .permit-event-approval { background-color: #22c55e; } /* green-500 */
+        .permit-event-expiration { background-color: #ef4444; } /* red-500 */
+
+        /* Invoice Creator Styles */
+        #invoice-creator-area .form-input {
+            @apply w-full p-1 bg-transparent border-none focus:ring-0 text-sm;
+        }
+        #invoice-creator-area .form-group {
+            @apply flex items-center space-x-2;
+        }
+        #invoice-creator-area .form-group i {
+            @apply text-gray-400;
+        }
+        #invoice-creator-area #invoice-logo-dropzone {
+            /* 32x32 pixels */
+            @apply w-8 h-8 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-center text-gray-500 cursor-pointer flex-shrink-0;
+        }
+        #invoice-creator-area #invoice-logo-preview {
+            @apply w-full h-full object-contain;
+        }
+        #invoice-creator-area .line-item-row input {
+            @apply bg-transparent border-b border-gray-200 focus:border-purple-500 focus:ring-0;
+        }
+        .doc-type-toggle.active {
+            background-color: white;
+            font-weight: 600;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        .word-break-all {
+            word-break: break-all;
+        }
+
+        #invoice-sheet.has-background {
+            position: relative;
+            z-index: 1;
+        }
+        #invoice-sheet.has-background::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            background-color: rgba(255, 255, 255, 0.85); /* White overlay */
+            z-index: -1;
+            border-radius: 0.5rem; /* Match parent's rounded corners */
+        }
+    </style>
+</head>
+<body class="bg-[#eae0d5ff] text-[#5e503fff]">
+
+    <div class="flex h-screen">
+        <!-- Left Sidebar -->
+        <aside class="w-48 flex-shrink-0 bg-[#22333bff] text-white flex flex-col">
+            <!-- Branding -->
+            <div class="h-28 flex flex-col items-center justify-center bg-[#0a0908ff] flex-shrink-0">
+                <div class="relative group">
+                    <div id="logo-container" class="w-12 h-12 bg-[#5e503fff] rounded-full flex items-center justify-center overflow-hidden">
+                        <img id="logo-image" src="" alt="Logo" class="hidden w-full h-full object-cover">
+                        <span id="logo-initial" class="text-white font-bold text-2xl">V</span>
+                    </div>
+                    <label id="logo-upload-label" for="logo-input" class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hidden">
+                        <i class="fas fa-camera text-white text-lg"></i>
+                    </label>
+                </div>
+                <input type="file" id="logo-input" class="hidden" accept="image/jpeg, image/png">
+                <h1 id="brand-name" class="text-xl font-bold tracking-wider text-outline mt-2">VURLA</h1>
+            </div>
+            
+            <!-- Project Selector -->
+            <div class="p-3 border-b border-t border-gray-700">
+                <div id="project-header" class="flex justify-between items-center mb-2 cursor-pointer">
+                    <label class="block text-xs font-medium text-gray-400 pointer-events-none">Project</label>
+                    <div id="project-actions" class="flex items-center space-x-2 hidden">
+                        <button id="share-project-btn" class="text-gray-400 hover:text-white" title="Share Project"><i class="fas fa-user-plus"></i></button>
+                        <button id="add-project-btn" class="text-gray-400 hover:text-white" title="Add"><i class="fas fa-plus"></i></button>
+                        <button id="edit-project-btn" class="text-gray-400 hover:text-white" title="Edit"><i class="fas fa-pen"></i></button>
+                        <button id="remove-project-btn" class="text-gray-400 hover:text-red-500" title="Remove"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+                <select id="project-select" class="w-full px-2 py-2 text-xs bg-[#0a0908ff] border border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#c6ac8fff] text-white"></select>
+            </div>
+
+            <!-- Main Navigation -->
+            <nav id="sidebar-nav" class="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+                <a href="#" data-view="files" data-filter="All" class="nav-link flex items-center px-2 py-2 rounded-lg hover:bg-[#5e503fff]/50 nav-link-active"><i class="fas fa-file-alt w-6 text-center"></i><span class="ml-2 text-xs">All Documents</span></a>
+                <a href="#" data-view="files" data-filter="Models" class="nav-link flex items-center px-2 py-2 rounded-lg hover:bg-[#5e503fff]/50"><i class="fas fa-cube w-6 text-center"></i><span class="ml-2 text-xs">Models</span></a>
+                <a href="#" data-view="files" data-filter="Drawings" class="nav-link flex items-center px-2 py-2 rounded-lg hover:bg-[#5e503fff]/50"><i class="fas fa-pencil-ruler w-6 text-center"></i><span class="ml-2 text-xs">Drawings</span></a>
+                <a href="#" data-view="contracts" data-filter="Contracts" class="nav-link flex items-center px-2 py-2 rounded-lg hover:bg-[#5e503fff]/50"><i class="fas fa-file-signature w-6 text-center"></i><span class="ml-2 text-xs">Contracts</span></a>
+                <a href="#" data-view="files" data-filter="Permits" class="nav-link flex items-center px-2 py-2 rounded-lg hover:bg-[#5e503fff]/50"><i class="fas fa-stamp w-6 text-center"></i><span class="ml-2 text-xs">Permits</span></a>
+                <div id="custom-categories-container"></div>
+                <div id="admin-nav-links">
+                     <a href="#" id="team-management-link" data-view="team" class="nav-link flex items-center px-2 py-2 rounded-lg hover:bg-[#5e503fff]/50"><i class="fas fa-users-cog w-6 text-center"></i><span class="ml-2 text-xs">Team Management</span></a>
+                </div>
+            </nav>
+
+            <!-- Auth Section -->
+            <div id="auth-section" class="p-4 border-t border-gray-700 flex-shrink-0">
+                <!-- This will be populated by JS: either Sign In button or User Info/Sign Out -->
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <header class="bg-[#eae0d5ff] shadow-sm h-20 flex-shrink-0 flex items-center justify-between px-6">
+                <h2 id="main-header-title" class="text-2xl font-bold text-[#22333bff]">All Documents</h2>
+            </header>
+            <div id="file-preview-area" class="flex-1 p-6 flex items-center justify-center bg-[#eae0d5ff]/60 cursor-pointer">
+                <div id="preview-placeholder" class="text-center text-[#5e503fff]/70">
+                    <i class="far fa-file-alt fa-4x"></i>
+                    <p class="mt-4 text-lg">Select a file to preview</p>
+                </div>
+                <div id="preview-content" class="hidden text-center">
+                    <i id="preview-icon" class="fas fa-file-pdf fa-9x text-[#5e503fff]"></i>
+                    <p id="preview-filename" class="mt-4 text-xl font-semibold text-[#22333bff]"></p>
+                    <p class="mt-2 text-[#5e503fff]/80">Click to enlarge</p>
+                </div>
+            </div>
+            <div id="contracts-area" class="flex-1 p-6 bg-[#eae0d5ff]/60 hidden overflow-y-auto">
+                <!-- This will be toggled with the invoice creator -->
+                <div id="contracts-list-view">
+                     <div class="flex justify-end items-center mb-6">
+                        <button id="go-to-creator-btn" title="Create New" class="w-10 h-10 bg-[#5e503fff] text-white font-bold rounded-lg hover:bg-[#22333bff] transition-colors flex items-center justify-center"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div class="w-full max-w-7xl mx-auto space-y-8">
+                        <div>
+                            <h3 class="text-xl font-bold text-[#22333bff] mb-4">Contracts</h3>
+                            <div id="contracts-list" class="bg-white/50 rounded-lg shadow-md overflow-hidden"></div>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-[#22333bff] mb-4">Invoices</h3>
+                            <div id="invoices-list" class="bg-white/50 rounded-lg shadow-md overflow-hidden"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Invoice/Contract Creator View -->
+                <div id="invoice-creator-area" class="hidden">
+                    <div id="invoice-sheet" class="w-full max-w-5xl mx-auto bg-white p-8 rounded-lg shadow-lg text-gray-800">
+                        <div class="flex justify-between items-start mb-8">
+                            <div>
+                                <div class="flex items-center space-x-1 p-1 bg-gray-200 rounded-lg">
+                                    <button data-type="Invoice" class="doc-type-toggle px-3 py-1 text-sm rounded-md">Invoice</button>
+                                    <button data-type="Contract" class="doc-type-toggle px-3 py-1 text-sm rounded-md">Contract</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button id="change-bg-btn" title="Change Background" class="w-10 h-10 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 flex items-center justify-center"><i class="fas fa-image"></i></button>
+                                <button id="remove-bg-btn" title="Remove Background" class="w-10 h-10 bg-red-200 text-red-800 rounded-lg hover:bg-red-300 hidden flex items-center justify-center"><i class="fas fa-times"></i></button>
+                                <button id="cancel-creator-btn" title="Cancel" class="w-10 h-10 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 flex items-center justify-center"><i class="fas fa-times"></i></button>
+                                <button id="save-invoice-btn" title="Save" class="w-10 h-10 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 flex items-center justify-center"><i class="fas fa-save"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Top Section: Logo, Bill From, etc. -->
+                        <div class="grid grid-cols-2 gap-12 mb-10">
+                            <div>
+                                <div class="flex flex-col items-center w-full">
+                                    <div id="invoice-logo-dropzone">
+                                        <img id="invoice-logo-preview" class="hidden"/>
+                                        <span id="invoice-logo-placeholder"><i class="fas fa-image text-lg text-gray-400"></i></span>
+                                    </div>
+                                    <p class="font-bold text-xl mt-2">VURLA</p>
+                                </div>
+                                <input type="file" id="invoice-logo-input" class="hidden" accept="image/*">
+                                <input type="file" id="background-image-input" class="hidden" accept="image/*">
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <h2 class="text-3xl font-bold uppercase text-gray-400 mb-4" id="creator-doc-title">Invoice</h2>
+                                <div class="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 items-center text-sm w-full max-w-sm">
+                                    <!-- Row 1 -->
+                                    <label for="invoice-number" class="font-semibold text-right whitespace-nowrap" id="creator-number-label">Invoice Number:</label>
+                                    <input type="text" id="invoice-number" class="text-left w-full bg-gray-50 rounded-md p-1 border border-gray-300 shadow-sm focus:ring-indigo-200 focus:ring-opacity-50">
+                            
+                                    <!-- Row 2 -->
+                                    <label class="font-semibold text-right whitespace-nowrap">Project:</label>
+                                    <span id="invoice-project-name" class="text-left px-1 truncate"></span>
+                            
+                                    <!-- Row 3 -->
+                                    <label for="invoice-date" class="font-semibold text-right whitespace-nowrap">Date:</label>
+                                    <input type="date" id="invoice-date" class="text-left w-full bg-gray-50 rounded-md p-1 border border-gray-300 shadow-sm focus:ring-indigo-200 focus:ring-opacity-50">
+                            
+                                    <!-- Row 4 -->
+                                    <label for="invoice-status" class="font-semibold text-right whitespace-nowrap">Status:</label>
+                                    <select id="invoice-status" class="text-left w-full border rounded-md bg-gray-50 p-1 border-gray-300 shadow-sm focus:ring-indigo-200 focus:ring-opacity-50">
+                                        <option>Draft</option>
+                                        <option>Sent</option>
+                                        <option>Approved</option>
+                                        <option>Executed</option>
+                                        <option>Paid</option>
+                                        <option>Void</option>
+                                    </select>
+                                    
+                                    <!-- Row 5: Related Contract -->
+                                    <div id="related-contract-group" class="contents">
+                                        <label for="related-contract-select" class="font-semibold text-right whitespace-nowrap">Related Contract:</label>
+                                        <select id="related-contract-select" class="text-left w-full border rounded-md bg-gray-50 p-1 border-gray-300 shadow-sm focus:ring-indigo-200 focus:ring-opacity-50">
+                                            <!-- Options populated by JS -->
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Middle Section: Bill To -->
+                        <div class="grid grid-cols-1 gap-12 mb-12">
+                            <div>
+                                <h4 class="font-bold text-gray-500 mb-2">Bill To:</h4>
+                                <div class="form-group"><i class="fas fa-building w-5 text-center"></i><input type="text" data-bill-to="company" class="form-input" placeholder="Company/Name"></div>
+                                <div class="form-group"><i class="fas fa-map-marker-alt w-5 text-center"></i><input type="text" data-bill-to="address" class="form-input" placeholder="Street Address"></div>
+                                <div class="form-group"><i class="fas fa-phone w-5 text-center"></i><input type="text" data-bill-to="phone" class="form-input" placeholder="Phone Number"></div>
+                                <div class="form-group"><i class="fas fa-globe w-5 text-center"></i><input type="text" data-bill-to="country" class="form-input" placeholder="United States"></div>
+                            </div>
+                        </div>
+
+                        <!-- Line Items Table -->
+                        <div class="mb-10">
+                            <table class="w-full">
+                                <thead id="line-items-header" class="bg-[#5e503fff] text-white">
+                                    <tr>
+                                        <th class="p-2 text-left w-1/2">Description</th>
+                                        <th class="p-2 text-right">Rate</th>
+                                        <th class="p-2 text-right">Qty</th>
+                                        <th class="p-2 text-right">Total</th>
+                                        <th class="p-2"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="line-items-body">
+                                    <!-- JS will render rows here -->
+                                </tbody>
+                            </table>
+                            <button id="add-line-item-btn" title="Add Line Item" class="mt-4 border-2 border-dashed border-gray-300 rounded-lg w-full py-2 text-gray-500 hover:bg-gray-100"><i class="fas fa-plus"></i></button>
+                        </div>
+
+                        <!-- Totals & Payment Section -->
+                        <div class="grid grid-cols-2 gap-12">
+                             <div>
+                                <h4 class="font-bold text-gray-500 mb-2">Payment Method</h4>
+                                <select id="payment-method-select" class="w-full p-2 border border-gray-200 rounded-md mb-2">
+                                    <option value="">Select a method</option>
+                                    <option value="bank">Bank Transfer</option>
+                                    <option value="zelle">Zelle</option>
+                                    <option value="other">Other</option>
+                                </select>
+                                <div id="payment-details-container">
+                                    <div id="bank-details" class="hidden space-y-2 p-3 bg-gray-50 rounded-md">
+                                        <div class="form-group"><i class="fas fa-university w-5 text-center"></i><input type="text" data-payment="bankName" class="form-input border-b" placeholder="Bank Name"></div>
+                                        <div class="form-group"><i class="fas fa-hashtag w-5 text-center"></i><input type="text" data-payment="accountNumber" class="form-input border-b" placeholder="Account Number"></div>
+                                        <div class="form-group"><i class="fas fa-code w-5 text-center"></i><input type="text" data-payment="swiftCode" class="form-input border-b" placeholder="SWIFT/BIC Code"></div>
+                                    </div>
+                                    <div id="zelle-details" class="hidden space-y-2 p-3 bg-gray-50 rounded-md">
+                                        <div class="form-group"><i class="fas fa-at w-5 text-center"></i><input type="text" data-payment="zelleInfo" class="form-input border-b" placeholder="Zelle Email / Phone"></div>
+                                    </div>
+                                    <div id="other-details" class="hidden space-y-2 p-3 bg-gray-50 rounded-md">
+                                        <textarea data-payment="otherInfo" class="w-full border border-gray-200 rounded-md p-2" rows="3" placeholder="Payment instructions..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex justify-end">
+                                <div class="w-full max-w-xs space-y-2">
+                                    <div class="flex justify-between"><span class="text-gray-500">Subtotal</span><span id="subtotal-amount">$0.00</span></div>
+                                    <div class="flex justify-between"><span class="text-gray-500">Discount</span><input type="number" id="discount-input" class="w-20 text-right bg-gray-100 rounded-md p-1" placeholder="0.00"></div>
+                                    <div class="flex justify-between"><span class="text-gray-500">Tax (%)</span><input type="number" id="tax-input" class="w-20 text-right bg-gray-100 rounded-md p-1" placeholder="0.00"></div>
+                                    <hr>
+                                    <div class="flex justify-between font-bold text-lg"><span class="">Total</span><span id="total-amount">$0.00</span></div>
+                                    <div id="amount-due-container" class="flex justify-between font-bold text-xl text-purple-600"><span class="">Amount Due (USD)</span><span id="amount-due">$0.00</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notes Section -->
+                        <div class="mt-10">
+                            <h4 class="font-bold text-gray-500 mb-2">Notes</h4>
+                            <textarea id="invoice-notes" class="w-full border border-gray-200 rounded-md p-2" rows="3" placeholder="Add any notes here..."></textarea>
+                        </div>
+                        
+                        <!-- Footer Section -->
+                        <div class="mt-12 -mx-8 -mb-8 p-6 rounded-b-lg text-white bg-[#22333bff]" id="invoice-footer">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                                <div class="form-group items-start">
+                                    <i class="fas fa-phone w-5 text-center mt-1"></i>
+                                    <input type="text" data-footer="phone" class="form-input bg-transparent border-b border-white/30 placeholder-white/70 text-white" placeholder="Your phone number">
+                                </div>
+                                <div class="form-group items-start">
+                                    <i class="fas fa-envelope w-5 text-center mt-1"></i>
+                                    <input type="text" data-footer="email" class="form-input bg-transparent border-b border-white/30 placeholder-white/70 text-white" placeholder="Your email address">
+                                </div>
+                                <div class="form-group items-start">
+                                    <i class="fas fa-globe w-5 text-center mt-1"></i>
+                                    <input type="text" data-footer="website" class="form-input bg-transparent border-b border-white/30 placeholder-white/70 text-white" placeholder="Your website">
+                                </div>
+                                <div class="form-group items-start">
+                                    <i class="fas fa-map-marker-alt w-5 text-center mt-1"></i>
+                                    <input type="text" data-footer="address" class="form-input bg-transparent border-b border-white/30 placeholder-white/70 text-white" placeholder="Your address">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="team-management-area" class="flex-1 p-6 bg-[#eae0d5ff]/60 hidden overflow-y-auto">
+                <div class="w-full max-w-4xl mx-auto">
+                    <h3 class="text-2xl font-bold text-[#22333bff] mb-6">Team Management</h3>
+                    <div class="bg-white/50 p-6 rounded-lg shadow-md mb-8">
+                        <h4 class="font-bold text-lg mb-4 text-[#0a0908ff]">Invite New Member</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                            <div class="md:col-span-2"><label for="invite-email" class="block text-sm font-medium text-gray-700">Email Address</label><input type="email" id="invite-email" placeholder="name@company.com" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"></div>
+                            <div><label for="invite-role" class="block text-sm font-medium text-gray-700">Role</label><select id="invite-role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"><option>admin</option><option>manager</option><option selected>employee</option></select></div>
+                        </div>
+                        <button id="send-invite-btn" title="Send Invite" class="mt-4 w-10 h-10 bg-[#5e503fff] text-white font-bold rounded-lg hover:bg-[#22333bff] transition-colors flex items-center justify-center"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                    <div class="bg-white/50 p-6 rounded-lg shadow-md"><h4 class="font-bold text-lg mb-4 text-[#0a0908ff]">Current Team</h4><div id="team-member-list" class="space-y-2"></div></div>
+                </div>
+            </div>
+            <!-- Permits Page -->
+            <div id="permits-area" class="form-page-area flex-1 p-6 bg-[#eae0d5ff]/60 hidden overflow-y-auto">
+                <div class="w-full max-w-7xl mx-auto">
+                    <div id="add-permit-container" class="collapsible-form-container">
+                        <div class="bg-white/50 p-6 rounded-lg shadow-md">
+                            <h3 id="permit-form-title" class="text-xl font-bold text-[#22333bff] mb-6">Add New Permit</h3>
+                            <form id="permit-form">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    <div><label for="permit-type">Permit Type</label><select id="permit-type"><option>Planning</option><option>Building</option><option>MEP</option><option>Other</option></select></div>
+                                    <div><label for="permit-number">Permit Number</label><input type="text" id="permit-number" placeholder="e.g., B-2025-1234"></div>
+                                    <div class="lg:col-span-2"><label for="permit-agency">Agency/Jurisdiction</label><input type="text" id="permit-agency" placeholder="e.g., City of West Covina"></div>
+                                    
+                                    <div><label for="permit-status">Status</label><select id="permit-status"><option>Draft</option><option>Submitted</option><option>Approved</option><option>Expired</option></select></div>
+                                    <div><label for="permit-submission-date">Submission Date</label><input type="date" id="permit-submission-date"></div>
+                                    <div><label for="permit-approval-date">Approval Date</label><input type="date" id="permit-approval-date"></div>
+                                    <div><label for="permit-expiration-date">Expiration Date</label><input type="date" id="permit-expiration-date"></div>
+
+                                    <div><label for="permit-responsible-person">Responsible Person</label><input type="text" id="permit-responsible-person" placeholder="e.g., John Doe"></div>
+                                    <div><label for="permit-responsible-phone">Phone</label><input type="tel" id="permit-responsible-phone" placeholder="e.g., (555) 123-4567"></div>
+                                    <div><label for="permit-responsible-email">Email</label><input type="email" id="permit-responsible-email" placeholder="e.g., john.doe@example.com"></div>
+                                    <div><label for="permit-pdf-input">Permit PDF</label><input type="file" id="permit-pdf-input" accept=".pdf"></div>
+                                </div>
+                                <div class="flex justify-end mt-6">
+                                    <button id="save-permit-btn" type="submit" title="Save Permit" class="bg-[#5e503fff] text-white w-10 h-10 rounded-lg hover:bg-[#22333bff] transition-colors flex items-center justify-center">
+                                        <i id="save-permit-icon" class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="bg-white/50 p-6 rounded-lg shadow-md mt-8">
+                        <div class="flex justify-between items-center mb-4">
+                             <div class="flex items-center space-x-2">
+                                <button id="prev-month-btn" class="p-2 rounded-full hover:bg-black/10 transition-colors"><i class="fas fa-chevron-left"></i></button>
+                                <h3 id="calendar-month-year-title" class="text-xl font-bold text-[#22333bff] w-40 text-center"></h3>
+                                <button id="next-month-btn" class="p-2 rounded-full hover:bg-black/10 transition-colors"><i class="fas fa-chevron-right"></i></button>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <input type="text" id="permit-search-input" placeholder="Search permits..." class="w-48">
+                                <select id="permit-status-filter"><option value="All">All Statuses</option><option>Draft</option><option>Submitted</option><option>Approved</option><option>Expired</option></select>
+                                <button id="toggle-permit-form-btn" title="Add New Permit" class="bg-[#5e503fff] text-white w-10 h-10 rounded-full hover:bg-[#22333bff] transition-colors flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="permit-calendar-view"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Right Sidebar (for file list view) -->
+        <aside id="right-sidebar" class="w-64 flex-shrink-0 bg-transparent flex flex-col">
+             <div class="h-20 flex-shrink-0"></div>
+             <div class="bg-[#c6ac8fff] rounded-lg flex-1 flex flex-col overflow-hidden mx-4 mb-4 shadow-md">
+                <section id="upload-section" class="p-4 border-b border-[#5e503fff]/20">
+                    <h3 class="text-lg font-semibold mb-3 text-[#0a0908ff]">Upload Document</h3>
+                    <div class="space-y-4">
+                        <div><input type="file" id="file-input" class="block w-full text-xs text-[#5e503fff] file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#eae0d5ff]/80 file:text-[#5e503fff] hover:file:bg-[#eae0d5ff] cursor-pointer"/></div>
+                        <div class="flex items-center space-x-2">
+                            <button id="upload-button" class="w-10 h-10 bg-[#5e503fff] text-white font-bold rounded-lg hover:bg-[#22333bff] transition-colors flex items-center justify-center text-sm" title="Upload"><i class="fas fa-upload"></i></button>
+                            <button id="add-category-btn" class="w-10 h-10 flex-shrink-0 bg-green-800 text-white font-bold rounded-lg hover:bg-green-900 transition-colors flex items-center justify-center text-sm" title="Add Category"><i class="fas fa-plus-circle"></i></button>
+                        </div>
+                    </div>
+                </section>
+                <section id="file-display-section" class="flex-1 overflow-y-auto p-2 right-sidebar-content">
+                    <div id="file-list" class="space-y-1"></div>
+                    <div id="no-docs-message" class="hidden text-center text-gray-500 py-10 px-4"><i class="fas fa-folder-open text-4xl mb-4"></i><p class="text-lg">No documents found.</p></div>
+                </section>
+             </div>
+        </aside>
+
+        <!-- Right Sidebar (for contract details view) - THIS IS NOW DEPRECATED FOR CONTRACTS VIEW -->
+        <aside id="right-sidebar-details" class="w-72 flex-shrink-0 bg-transparent flex-col hidden">
+            <div class="h-20 flex-shrink-0"></div>
+            <div class="bg-[#c6ac8fff] rounded-lg flex-1 flex flex-col overflow-hidden mx-4 mb-4 shadow-md">
+                <div id="contract-details-content-legacy" class="flex-1 p-4 overflow-y-auto">
+                    <!-- Legacy content area, no longer used by contracts view -->
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Modals -->
+    <div id="project-modal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center"><div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md"><h3 id="modal-title" class="text-xl font-semibold mb-4">Add New Project</h3><input id="project-name-input" type="text" placeholder="Enter project name" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5e503fff]"><div class="mt-6 flex justify-end space-x-3"><button id="cancel-project-modal" title="Cancel" class="w-10 h-10 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 flex items-center justify-center"><i class="fas fa-times"></i></button><button id="save-project-modal" title="Save" class="w-10 h-10 bg-[#5e503fff] text-white rounded-lg hover:bg-[#22333bff] flex items-center justify-center"><i class="fas fa-save"></i></button></div></div></div>
+    <div id="category-modal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50"><div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md"><h3 class="text-xl font-semibold mb-4">Add New Category</h3><input id="category-name-input" type="text" placeholder="Enter category name" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5e503fff]"><div class="mt-4 flex items-center"><input id="share-category-checkbox" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"><label for="share-category-checkbox" class="ml-2 block text-sm text-gray-900">Share with Employee</label></div><div class="mt-6 flex justify-end space-x-3"><button id="cancel-category-modal" title="Cancel" class="w-10 h-10 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 flex items-center justify-center"><i class="fas fa-times"></i></button><button id="save-category-modal" title="Save" class="w-10 h-10 bg-[#5e503fff] text-white rounded-lg hover:bg-[#22333bff] flex items-center justify-center"><i class="fas fa-save"></i></button></div></div></div>
+    <div id="confirm-modal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center"><div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md"><h3 class="text-xl font-semibold mb-2">Are you sure?</h3><p id="confirm-modal-text" class="text-gray-600 mb-6"></p><div class="mt-6 flex justify-end space-x-3"><button id="cancel-confirm-modal" title="Cancel" class="w-10 h-10 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 flex items-center justify-center"><i class="fas fa-times"></i></button><button id="confirm-delete-btn" title="Delete" class="w-10 h-10 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center"><i class="fas fa-trash"></i></button></div></div></div>
+    
+    <!-- Share Project Modal -->
+    <div id="share-modal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg text-gray-800">
+            <h3 class="text-xl font-semibold mb-1">Share "<span id="share-modal-project-name"></span>"</h3>
+            <p class="text-sm text-gray-500 mb-6">Manage access for project members.</p>
+            <div class="flex items-center space-x-2 mb-6"><input id="invite-email-input" type="email" placeholder="Enter email to invite..." class="flex-grow px-3 py-2 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5e503fff]"><button id="invite-member-btn" title="Invite" class="w-10 h-10 bg-[#5e503fff] text-white font-bold rounded-lg hover:bg-[#22333bff] flex-shrink-0 flex items-center justify-center"><i class="fas fa-paper-plane"></i></button></div>
+            <div class="space-y-3"><h4 class="text-sm font-bold text-gray-600 border-b pb-2">Project Members</h4><div id="member-list" class="max-h-48 overflow-y-auto pr-2"></div></div>
+            <div class="mt-6 flex justify-end"><button id="close-share-modal" title="Done" class="w-10 h-10 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 flex items-center justify-center"><i class="fas fa-check"></i></button></div>
+        </div>
+    </div>
+
+    <!-- Permit Detail Modal -->
+    <div id="permit-detail-modal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg text-gray-800">
+            <div class="flex justify-between items-start">
+                <h3 class="text-xl font-semibold mb-4">Permit Details</h3>
+                <button id="close-permit-detail-modal" class="text-gray-400 hover:text-gray-600">&times;</button>
+            </div>
+            <div id="permit-detail-content" class="space-y-3 text-sm"></div>
+        </div>
+    </div>
+
+    <!-- Contract/Invoice Detail Modal -->
+    <div id="contract-detail-modal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-80 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h3 id="contract-detail-modal-title" class="text-xl font-semibold text-gray-800">Document Details</h3>
+                <button id="close-contract-detail-modal" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+            <div id="contract-detail-modal-content" class="flex-1 overflow-y-auto">
+                <!-- Details will be rendered here by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Fullscreen Preview & Annotation Modal -->
+    <div id="fullscreen-preview-modal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-80 hidden flex-col items-center justify-center z-50 p-4">
+        <div class="absolute top-4 right-4 flex items-center space-x-2 z-30">
+            <div id="fullscreen-toolbar-container" class="flex items-center">
+                <div id="tools-container" class="flex items-center space-x-1 p-2 rounded-lg bg-black/30 mr-2 opacity-0 invisible transition-all duration-300 transform scale-x-0 origin-right">
+                    <button id="sketch-tool-btn" title="Sketch" class="tool-btn w-10 h-10 text-white hover:bg-white/20 rounded-md"><i class="fas fa-pencil-alt"></i></button>
+                    <button id="line-tool-btn" title="Line" class="tool-btn w-10 h-10 text-white hover:bg-white/20 rounded-md"><i class="fas fa-minus"></i></button>
+                    <button id="rect-tool-btn" title="Rectangle" class="tool-btn w-10 h-10 text-white hover:bg-white/20 rounded-md"><i class="far fa-square"></i></button>
+                    <button id="circle-tool-btn" title="Circle" class="tool-btn w-10 h-10 text-white hover:bg-white/20 rounded-md"><i class="far fa-circle"></i></button>
+                    <button id="eraser-tool-btn" title="Eraser" class="tool-btn w-10 h-10 text-white hover:bg-white/20 rounded-md"><i class="fas fa-eraser"></i></button>
+                    <input type="color" id="color-picker" value="#ff0000" title="Color Picker">
+                    <select id="stroke-size-picker" title="Stroke Size" class="tool-btn bg-transparent text-white h-10 px-2 rounded-md hover:bg-white/20 focus:outline-none cursor-pointer">
+                        <option class="text-black" value="1">1pt</option><option class="text-black" value="3">3pt</option><option class="text-black" value="5" selected>5pt</option><option class="text-black" value="10">10pt</option><option class="text-black" value="15">15pt</option>
+                    </select>
+                    <button id="undo-btn" title="Undo" class="tool-btn w-10 h-10 text-white hover:bg-white/20 rounded-md"><i class="fas fa-undo"></i></button>
+                    <div class="border-l border-white/30 h-8 mx-1"></div>
+                    <button id="zoom-in-btn" title="Zoom In" class="tool-btn w-10 h-10 text-white hover:bg-white/20 rounded-md"><i class="fas fa-search-plus"></i></button>
+                    <button id="zoom-out-btn" title="Zoom Out" class="tool-btn w-10 h-10 text-white hover:bg-white/20 rounded-md"><i class="fas fa-search-minus"></i></button>
+                    <button id="pan-tool-btn" title="Pan" class="tool-btn w-10 h-10 text-white hover:bg-white/20 rounded-md"><i class="fas fa-hand-paper"></i></button>
+                    <button id="callout-tool-btn" title="Callout" class="tool-btn w-10 h-10 text-white hover:bg-white/20 rounded-md"><i class="fas fa-bullhorn"></i></button>
+                </div>
+                <div class="flex items-center p-2 rounded-lg bg-black/30 text-white"><button id="main-tool-btn" title="Toggle Tools" class="w-10 h-10 hover:bg-white/20 rounded-md"><i class="fas fa-toolbox"></i></button></div>
+            </div>
+            <button id="close-fullscreen-btn" title="Close" class="w-10 h-10 flex items-center justify-center bg-black/30 text-white rounded-lg hover:bg-white/20"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="fullscreen-content-wrapper" class="w-full h-full flex items-center justify-center overflow-hidden relative">
+            <div id="fullscreen-content" class="transition-transform duration-200 relative" style="transform-origin: center center;">
+                 <i id="fullscreen-icon" class="fas fa-file-pdf text-white" style="font-size: 30rem;"></i>
+                 <canvas id="drawing-canvas"></canvas>
+                 <svg id="callout-connector-layer"></svg>
+                 <div id="callout-layer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modals -->
+    <div id="signin-modal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-sm text-gray-800">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold">Sign In</h3>
+                <button class="close-modal-btn text-gray-400 hover:text-gray-600 text-2xl" data-modal-id="signin-modal">&times;</button>
+            </div>
+            <form id="signin-form">
+                <div class="space-y-4">
+                    <div>
+                        <label for="signin-email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                        <input type="email" id="signin-email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    </div>
+                    <div>
+                        <label for="signin-password" class="block text-sm font-medium text-gray-700">Password</label>
+                        <input type="password" id="signin-password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    </div>
+                </div>
+                <div class="mt-8">
+                    <button type="submit" class="w-full bg-[#5e503fff] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#22333bff] transition-colors flex items-center justify-center" title="Sign In"><i class="fas fa-sign-in-alt"></i></button>
+                </div>
+            </form>
+            <p class="text-center text-sm text-gray-600 mt-4">
+                Don't have an account? <button id="goto-signup-btn" class="font-medium text-indigo-600 hover:text-indigo-500">Sign Up</button>
+            </p>
+        </div>
+    </div>
+
+    <div id="signup-modal" class="modal-backdrop fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-sm text-gray-800">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold">Create Account</h3>
+                <button class="close-modal-btn text-gray-400 hover:text-gray-600 text-2xl" data-modal-id="signup-modal">&times;</button>
+            </div>
+            <form id="signup-form">
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="signup-firstname" class="block text-sm font-medium text-gray-700">First Name</label>
+                            <input type="text" id="signup-firstname" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                        <div>
+                            <label for="signup-lastname" class="block text-sm font-medium text-gray-700">Last Name</label>
+                            <input type="text" id="signup-lastname" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="signup-email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                        <input type="email" id="signup-email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                    <div>
+                        <label for="signup-password" class="block text-sm font-medium text-gray-700">Password</label>
+                        <input type="password" id="signup-password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                    <div>
+                        <label for="signup-confirm-password" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+                        <input type="password" id="signup-confirm-password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                </div>
+                <div class="mt-8">
+                    <button type="submit" class="w-full bg-[#5e503fff] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#22333bff] transition-colors flex items-center justify-center" title="Create Account"><i class="fas fa-user-plus"></i></button>
+                </div>
+            </form>
+            <p class="text-center text-sm text-gray-600 mt-4">
+                Already have an account? <button id="goto-signin-btn" class="font-medium text-indigo-600 hover:text-indigo-500">Sign In</button>
+            </p>
+        </div>
+    </div>
+
+    <div id="notification-toast" class="fixed bottom-5 right-5 bg-gunmetal text-white px-6 py-3 rounded-lg shadow-lg opacity-0 transition-opacity duration-300 z-50">
+        <p id="notification-message"></p>
+    </div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- STATE MANAGEMENT ---
+    const now = new Date();
+    let state = {
+        currentUser: null, // 'admin', 'manager', 'employee', or null if logged out
+        currentView: 'files', // 'files', 'team', 'contracts', 'contracts-creator'
+        creatorDocType: 'Invoice', // 'Invoice' or 'Contract'
+        currentCalendarYear: now.getFullYear(),
+        currentCalendarMonth: now.getMonth(), // 0-indexed
+        appLogo: null, // Holds the Data URL for the custom logo
+        projects: {
+            'proj-1': { id: 'proj-1', name: 'Vassar St - 91767' },
+            'proj-2': { id: 'proj-2', name: 'Main St - 12345' },
+            'proj-3': { id: 'proj-3', name: 'Oak Ave - 54321' },
+        },
+        files: [
+            { id: 'f1', projectId: 'proj-1', category: 'Drawings', filename: 'Architectural_Plans_Rev2.pdf', date: '2025-07-01' },
+            { id: 'f2', projectId: 'proj-1', category: 'Drawings', filename: 'Structural_Details.png', date: '2025-06-29' },
+            { id: 'f3', projectId: 'proj-1', category: 'Models', filename: 'Main_Building.rvt', date: '2025-06-28' },
+            { 
+                id: 'f7', 
+                projectId: 'proj-1', 
+                category: 'Permits', 
+                filename: 'Electrical_Permit_E-2025-001.pdf', 
+                date: '2025-06-28',
+                permitType: 'MEP',
+                permitNumber: 'E-2025-001',
+                agency: 'City of West Covina',
+                status: 'Approved',
+                submissionDate: '2025-07-15',
+                approvalDate: '2025-07-20',
+                expirationDate: '2026-01-20',
+                responsiblePerson: 'John Doe',
+                responsiblePersonPhone: '555-123-4567',
+                responsiblePersonEmail: 'john.doe@example.com'
+            },
+            {
+                id: 'f10',
+                projectId: 'proj-1',
+                category: 'Permits',
+                filename: 'Building_Permit_B-2025-101.pdf',
+                date: '2025-07-02',
+                permitType: 'Building',
+                permitNumber: 'B-2025-101',
+                agency: 'City of West Covina',
+                status: 'Submitted',
+                submissionDate: '2025-07-02',
+                approvalDate: null,
+                expirationDate: null,
+                responsiblePerson: 'Jane Smith',
+                responsiblePersonPhone: '555-765-4321',
+                responsiblePersonEmail: 'jane.smith@example.com'
+            },
+            { id: 'f9', projectId: 'proj-1', category: 'RFIs', filename: 'RFI-001_Window_Spec.pdf', date: '2025-06-26' },
+            { id: 'f5', projectId: 'proj-2', category: 'Change Orders', filename: 'CO-001_Plumbing_Update.pdf', date: '2025-06-30' },
+            { id: 'f6', projectId: 'proj-3', category: 'Selection Sheets', filename: 'Kitchen_Finishes_Selections.xlsx', date: '2025-06-20' },
+            { id: 'c1', projectId: 'proj-1', category: 'Contracts', type: 'Contract', filename: 'GC_Agreement_Final.pdf', date: '2025-05-20', value: 1250000, status: 'Executed', signer: 'General Contractor Inc.'},
+            { id: 'c2', projectId: 'proj-1', category: 'Contracts', type: 'Contract', filename: 'Architect_Svc_Agreement.pdf', date: '2025-04-15', value: 85000, status: 'Executed', signer: 'Design Firm LLC'},
+            { id: 'i1', projectId: 'proj-1', category: 'Contracts', type: 'Invoice', filename: 'INV-GC-001_Mobilization.pdf', date: '2025-06-01', value: 125000, status: 'Paid', parentContractId: 'c1'},
+            { id: 'i2', projectId: 'proj-1', category: 'Contracts', type: 'Invoice', filename: 'INV-GC-002_Demo.pdf', date: '2025-07-01', value: 75000, status: 'Approved', parentContractId: 'c1'},
+            { id: 'i3', projectId: 'proj-1', category: 'Contracts', type: 'Invoice', filename: 'INV-ARCH-001.pdf', date: '2025-06-10', value: 15000, status: 'Paid', parentContractId: 'c2'},
+        ],
+        categories: {
+            'proj-1': new Set(['RFIs']),
+            'proj-2': new Set(),
+            'proj-3': new Set(),
+        },
+        employeeSharedCategories: {
+            'proj-1': new Set(),
+            'proj-2': new Set(),
+            'proj-3': new Set(),
+        },
+        permissions: {
+            'admin': { 'proj-1': 'admin', 'proj-2': 'admin', 'proj-3': 'admin' },
+            'manager': { 'proj-1': 'manager', 'proj-2': 'manager' },
+            'employee': { 'proj-1': 'employee', 'proj-2': 'employee' },
+        },
+        rolePermissions: {
+            admin: { canUpload: true, canDelete: true, canManageProjects: true, canManageUsers: true },
+            manager: { canUpload: true, canDelete: true, canManageProjects: true, canManageUsers: false },
+            employee: { canUpload: true, canDelete: true, canManageProjects: false, canManageUsers: false },
+        },
+        users: {
+            'admin': { name: 'Admin User', email: 'admin@vurlapro.com' },
+            'manager': { name: 'Project Manager', email: 'manager@vurlapro.com' },
+            'employee': { name: 'Team Employee', email: 'employee@example.com' },
+        },
+        currentProjectId: null,
+        currentCategoryFilter: 'All',
+        confirmAction: null,
+        isCurrentFileAnnotatable: false,
+        placingCalloutInfo: null,
+        editingProjectId: null,
+        editingPermitId: null,
+        invoiceLogo: null,
+    };
+
+    // --- DOM Elements ---
+    const projectSelect = document.getElementById('project-select');
+    const customCategoriesContainer = document.getElementById('custom-categories-container');
+    const fileListContainer = document.getElementById('file-list');
+    const noDocsMessage = document.getElementById('no-docs-message');
+    const mainHeaderTitle = document.getElementById('main-header-title');
+    const authSection = document.getElementById('auth-section');
+    const projectHeader = document.getElementById('project-header');
+    const filePreviewArea = document.getElementById('file-preview-area');
+    const contractsArea = document.getElementById('contracts-area');
+    const teamManagementArea = document.getElementById('team-management-area');
+    const permitsArea = document.getElementById('permits-area');
+    const rightSidebar = document.getElementById('right-sidebar');
+    const rightSidebarDetails = document.getElementById('right-sidebar-details');
+    const sidebarNav = document.getElementById('sidebar-nav');
+    
+    // Logo Elements
+    const logoInput = document.getElementById('logo-input');
+    const logoImage = document.getElementById('logo-image');
+    const logoInitial = document.getElementById('logo-initial');
+    const logoUploadLabel = document.getElementById('logo-upload-label');
+
+    // Permit Page Elements
+    const addPermitContainer = document.getElementById('add-permit-container');
+    const togglePermitFormBtn = document.getElementById('toggle-permit-form-btn');
+    const permitForm = document.getElementById('permit-form');
+    const permitCalendarView = document.getElementById('permit-calendar-view');
+    const permitFormTitle = document.getElementById('permit-form-title');
+    const savePermitBtn = document.getElementById('save-permit-btn');
+    const savePermitIcon = document.getElementById('save-permit-icon');
+    const permitSearchInput = document.getElementById('permit-search-input');
+    const permitStatusFilter = document.getElementById('permit-status-filter');
+    const prevMonthBtn = document.getElementById('prev-month-btn');
+    const nextMonthBtn = document.getElementById('next-month-btn');
+    const calendarMonthYearTitle = document.getElementById('calendar-month-year-title');
+
+    // Preview Area
+    const previewPlaceholder = document.getElementById('preview-placeholder');
+    const previewContent = document.getElementById('preview-content');
+    const previewIcon = document.getElementById('preview-icon');
+    const previewFilename = document.getElementById('preview-filename');
+
+    // Buttons
+    const projectActions = document.getElementById('project-actions');
+    const addProjectBtn = document.getElementById('add-project-btn');
+    const editProjectBtn = document.getElementById('edit-project-btn');
+    const removeProjectBtn = document.getElementById('remove-project-btn');
+    const shareProjectBtn = document.getElementById('share-project-btn');
+    const addCategoryBtn = document.getElementById('add-category-btn');
+    const uploadButton = document.getElementById('upload-button');
+    const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+
+    // Invoice Creator Elements
+    const contractsListView = document.getElementById('contracts-list-view');
+    const invoiceCreatorArea = document.getElementById('invoice-creator-area');
+    const invoiceSheet = document.getElementById('invoice-sheet');
+    const goToCreatorBtn = document.getElementById('go-to-creator-btn');
+    const cancelCreatorBtn = document.getElementById('cancel-creator-btn');
+    const saveInvoiceBtn = document.getElementById('save-invoice-btn');
+    const changeBgBtn = document.getElementById('change-bg-btn');
+    const removeBgBtn = document.getElementById('remove-bg-btn');
+    const bgImageInput = document.getElementById('background-image-input');
+    const docTypeToggles = document.querySelectorAll('.doc-type-toggle');
+    const addLineItemBtn = document.getElementById('add-line-item-btn');
+    const lineItemsBody = document.getElementById('line-items-body');
+    const invoiceLogoDropzone = document.getElementById('invoice-logo-dropzone');
+    const invoiceLogoInput = document.getElementById('invoice-logo-input');
+    const invoiceLogoPreview = document.getElementById('invoice-logo-preview');
+    const invoiceLogoPlaceholder = document.getElementById('invoice-logo-placeholder');
+    const invoiceDateInput = document.getElementById('invoice-date');
+    const invoiceStatusInput = document.getElementById('invoice-status');
+    const paymentMethodSelect = document.getElementById('payment-method-select');
+    const paymentDetailsContainer = document.getElementById('payment-details-container');
+
+    // Modals
+    const projectModal = document.getElementById('project-modal');
+    const categoryModal = document.getElementById('category-modal');
+    const confirmModal = document.getElementById('confirm-modal');
+    const shareModal = document.getElementById('share-modal');
+    const permitDetailModal = document.getElementById('permit-detail-modal');
+    const contractDetailModal = document.getElementById('contract-detail-modal');
+    const signinModal = document.getElementById('signin-modal');
+    const signupModal = document.getElementById('signup-modal');
+    const gotoSignupBtn = document.getElementById('goto-signup-btn');
+    const gotoSigninBtn = document.getElementById('goto-signin-btn');
+    const closeModalBtns = document.querySelectorAll('.close-modal-btn');
+    const signinForm = document.getElementById('signin-form');
+    const signupForm = document.getElementById('signup-form');
+    
+    // Annotation Elements
+    const fullscreenModal = document.getElementById('fullscreen-preview-modal');
+    const fullscreenToolbarContainer = document.getElementById('fullscreen-toolbar-container');
+    const closeFullscreenBtn = document.getElementById('close-fullscreen-btn');
+    const fullscreenContentWrapper = document.getElementById('fullscreen-content-wrapper');
+    const fullscreenContent = document.getElementById('fullscreen-content');
+    const fullscreenIcon = document.getElementById('fullscreen-icon');
+    const mainToolBtn = document.getElementById('main-tool-btn');
+    const toolsContainer = document.getElementById('tools-container');
+    const toolBtns = document.querySelectorAll('.tool-btn');
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    const panToolBtn = document.getElementById('pan-tool-btn');
+    const calloutToolBtn = document.getElementById('callout-tool-btn');
+    const calloutLayer = document.getElementById('callout-layer');
+    const calloutConnectorLayer = document.getElementById('callout-connector-layer');
+    const canvas = document.getElementById('drawing-canvas');
+    const ctx = canvas.getContext('2d');
+    const sketchToolBtn = document.getElementById('sketch-tool-btn');
+    const lineToolBtn = document.getElementById('line-tool-btn');
+    const rectToolBtn = document.getElementById('rect-tool-btn');
+    const circleToolBtn = document.getElementById('circle-tool-btn');
+    const eraserToolBtn = document.getElementById('eraser-tool-btn');
+    const colorPicker = document.getElementById('color-picker');
+    const undoBtn = document.getElementById('undo-btn');
+    const strokeSizePicker = document.getElementById('stroke-size-picker');
+
+    // Annotation State
+    let currentZoom = 1, isPanning = false, startX, startY, startMouseX, startMouseY, translateX = 0, translateY = 0;
+    let currentTool = 'pan', isDrawing = false, isShiftPressed = false;
+    let drawingHistory = [], currentStrokeSize = 5;
+    let activeCalloutBox = null, dragOffsetX, dragOffsetY;
+
+    // --- HELPER FUNCTIONS ---
+    function getFileExtension(filename) { return filename.slice((filename.lastIndexOf(".") - 1 >>> 0) + 2).toLowerCase(); }
+    function getIconForFile(filename) {
+        const ext = getFileExtension(filename);
+        switch (ext) {
+            case 'pdf': return 'fas fa-file-pdf text-red-500';
+            case 'png': case 'jpg': case 'jpeg': return 'fas fa-file-image text-purple-500';
+            case 'rvt': return 'fas fa-cube text-blue-500';
+            case 'doc': case 'docx': return 'fas fa-file-word text-blue-600';
+            case 'xls': case 'xlsx': return 'fas fa-file-excel text-green-600';
+            default: return 'fas fa-file-alt text-gray-500';
+        }
+    };
+
+    function getIconForContractType(type) {
+        switch (type) {
+            case 'Contract': return 'fas fa-file-signature text-blue-600';
+            case 'Invoice': return 'fas fa-file-invoice-dollar text-green-600';
+            default: return 'fas fa-file-alt text-gray-500';
+        }
+    }
+
+    function formatCurrency(value) {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+    }
+
+    function getCurrentPermissions() {
+        if (!state.currentUser) { // Handle logged-out state
+            return { canUpload: false, canDelete: false, canManageProjects: false, canManageUsers: false };
+        }
+        const userRoleForProject = state.permissions[state.currentUser]?.[state.currentProjectId];
+        if (!userRoleForProject) {
+            return { canUpload: false, canDelete: false, canManageProjects: false, canManageUsers: false };
+        }
+        return state.rolePermissions[userRoleForProject];
+    }
+    
+    let notificationTimeout;
+    function showNotification(message, isError = false) {
+        const toast = document.getElementById('notification-toast');
+        const messageEl = document.getElementById('notification-message');
+        
+        messageEl.textContent = message;
+        toast.className = toast.className.replace(/bg-red-500|bg-gunmetal/g, '');
+        toast.classList.add(isError ? 'bg-red-500' : 'bg-gunmetal');
+        
+        toast.classList.remove('opacity-0');
+        
+        clearTimeout(notificationTimeout);
+        notificationTimeout = setTimeout(() => {
+            toast.classList.add('opacity-0');
+        }, 3000);
+    }
+
+    // --- RENDER FUNCTIONS ---
+    
+    function renderApp() {
+        renderAuthSection();
+        renderLogo();
+        renderProjectSelector();
+        renderSidebar();
+        renderMainView();
+        updateUIVisibility();
+        if (state.currentView === 'files') {
+            updatePreview(null);
+        }
+    }
+
+    function renderLogo() {
+        if (state.appLogo) {
+            logoImage.src = state.appLogo;
+            logoImage.classList.remove('hidden');
+            logoInitial.classList.add('hidden');
+        } else {
+            logoImage.classList.add('hidden');
+            logoInitial.classList.remove('hidden');
+        }
+    }
+
+    function renderMainView() {
+        filePreviewArea.classList.add('hidden');
+        rightSidebar.classList.add('hidden');
+        rightSidebarDetails.classList.add('hidden');
+        teamManagementArea.classList.add('hidden');
+        permitsArea.classList.add('hidden');
+        contractsArea.classList.add('hidden');
+
+        if (state.currentView === 'team') {
+            teamManagementArea.classList.remove('hidden');
+            mainHeaderTitle.textContent = 'Team Management';
+            renderTeamManagement();
+        } else if (state.currentView === 'contracts') {
+            contractsArea.classList.remove('hidden');
+            contractsListView.classList.remove('hidden');
+            invoiceCreatorArea.classList.add('hidden');
+            mainHeaderTitle.textContent = 'Contracts & Invoices';
+            renderContractsView();
+        } else if (state.currentView === 'contracts-creator') {
+            contractsArea.classList.remove('hidden');
+            contractsListView.classList.add('hidden');
+            invoiceCreatorArea.classList.remove('hidden');
+            mainHeaderTitle.textContent = 'Create New Document';
+            resetAndRenderInvoiceCreator();
+        } else if (state.currentCategoryFilter === 'Permits') {
+            permitsArea.classList.remove('hidden');
+            mainHeaderTitle.textContent = 'Permits';
+            renderPermitsPage();
+        } else {
+            filePreviewArea.classList.remove('hidden');
+            rightSidebar.classList.remove('hidden');
+            rightSidebar.classList.add('flex');
+            mainHeaderTitle.textContent = state.currentCategoryFilter === 'All' ? 'All Documents' : state.currentCategoryFilter;
+            renderFileList();
+        }
+    }
+
+    function renderContractsView() {
+        const contractsList = document.getElementById('contracts-list');
+        const invoicesList = document.getElementById('invoices-list');
+
+        const projectFiles = state.files.filter(f => f.projectId === state.currentProjectId && f.category === 'Contracts');
+        const contracts = projectFiles.filter(f => f.type === 'Contract');
+        const invoices = projectFiles.filter(f => f.type === 'Invoice');
+
+        const createTable = (items, type) => {
+            if (items.length === 0) {
+                return `<p class="p-4 text-center text-gray-500">No ${type.toLowerCase()}s found.</p>`;
+            }
+            let tableHTML = '<table class="w-full text-sm text-left text-[#22333bff]"><thead class="text-xs text-[#5e503fff] uppercase bg-black/5"><tr>';
+            const headers = type === 'Contract' ? ['Contract', 'Signer', 'Value', 'Status'] : ['Invoice', 'Related Contract', 'Value', 'Status'];
+            headers.forEach(h => tableHTML += `<th scope="col" class="px-4 py-3">${h}</th>`);
+            tableHTML += '</tr></thead><tbody>';
+
+            items.forEach(item => {
+                const statusColor = {
+                    'Executed': 'bg-green-100 text-green-800',
+                    'Paid': 'bg-green-100 text-green-800',
+                    'Approved': 'bg-blue-100 text-blue-800',
+                    'Draft': 'bg-yellow-100 text-yellow-800',
+                    'Sent': 'bg-indigo-100 text-indigo-800',
+                    'Void': 'bg-gray-200 text-gray-800',
+                }[item.status] || 'bg-gray-100 text-gray-800';
+
+                let secondaryInfo = '';
+                if (type === 'Contract') {
+                    secondaryInfo = item.signer || item.billTo?.company || 'N/A';
+                } else {
+                    const parentContract = state.files.find(f => f.id === item.parentContractId);
+                    secondaryInfo = parentContract ? parentContract.filename : 'N/A';
+                }
+
+                tableHTML += `
+                    <tr class="contract-row border-b border-[#c6ac8fff]/30 hover:bg-[#0a09081a] cursor-pointer" data-file-id="${item.id}">
+                        <th scope="row" class="px-4 py-3 font-medium whitespace-nowrap">${item.filename}</th>
+                        <td class="px-4 py-3 truncate" style="max-width: 150px;">${secondaryInfo}</td>
+                        <td class="px-4 py-3">${formatCurrency(item.value)}</td>
+                        <td class="px-4 py-3"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">${item.status}</span></td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            return tableHTML;
+        };
+
+        contractsList.innerHTML = createTable(contracts, 'Contract');
+        invoicesList.innerHTML = createTable(invoices, 'Invoice');
+    }
+
+    function renderContractDetails(file) {
+        const detailsContainer = document.getElementById('contract-detail-modal-content');
+        const modalTitle = document.getElementById('contract-detail-modal-title');
+
+        if (!file) {
+            detailsContainer.innerHTML = '';
+            modalTitle.textContent = 'Document Details';
+            return;
+        }
+
+        modalTitle.textContent = `${file.type} - ${file.filename}`;
+
+        const isInvoice = file.type === 'Invoice';
+        const logoHtml = `
+            <div class="flex flex-col items-center">
+                ${file.logo ? `<img src="${file.logo}" class="w-16 h-16 object-contain flex-shrink-0">` : '<div class="w-16 h-16 bg-gray-200 flex items-center justify-center text-gray-500 rounded flex-shrink-0"><i class="fas fa-image text-2xl"></i></div>'}
+                <p class="font-bold text-xl mt-2">VURLA</p>
+            </div>
+        `;
+
+        let lineItemsHtml = '';
+        if (file.lineItems && file.lineItems.length > 0) {
+            file.lineItems.forEach(item => {
+                lineItemsHtml += `
+                    <tr class="border-b border-gray-200">
+                        <td class="py-2 pr-2">${item.description}</td>
+                        <td class="py-2 text-right">${formatCurrency(item.rate)}</td>
+                        <td class="py-2 text-right">${item.qty}</td>
+                        <td class="py-2 text-right font-medium">${formatCurrency(item.total)}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        const billTo = file.billTo || {};
+        const projectName = state.projects[file.projectId]?.name || 'N/A';
+
+        const statusColor = {
+            'Executed': 'bg-green-100 text-green-800',
+            'Paid': 'bg-green-100 text-green-800',
+            'Approved': 'bg-blue-100 text-blue-800',
+            'Draft': 'bg-yellow-100 text-yellow-800',
+            'Sent': 'bg-indigo-100 text-indigo-800',
+            'Void': 'bg-gray-200 text-gray-800',
+        }[file.status] || 'bg-gray-100 text-gray-800';
+
+        const taxAmount = ((file.subtotal || 0) - (file.discount || 0)) * ((file.tax || 0)/100);
+
+        let paymentDetailsHtml = '';
+        if (file.paymentDetails) {
+            paymentDetailsHtml += `<h4 class="font-bold text-gray-500 mb-2">Payment Details</h4><div class="p-3 bg-gray-50 rounded-md text-xs space-y-1">`;
+            paymentDetailsHtml += `<p><strong>Method:</strong> ${file.paymentDetails.method}</p>`;
+            if(file.paymentDetails.method === 'Bank Transfer') {
+                paymentDetailsHtml += `<p><strong>Bank:</strong> ${file.paymentDetails.bankName || ''}</p>`;
+                paymentDetailsHtml += `<p><strong>Account #:</strong> ${file.paymentDetails.accountNumber || ''}</p>`;
+                paymentDetailsHtml += `<p><strong>SWIFT:</strong> ${file.paymentDetails.swiftCode || ''}</p>`;
+            } else if (file.paymentDetails.method === 'Zelle') {
+                paymentDetailsHtml += `<p><strong>Info:</strong> ${file.paymentDetails.zelleInfo || ''}</p>`;
+            } else if (file.paymentDetails.method === 'Other') {
+                 paymentDetailsHtml += `<p><strong>Instructions:</strong> ${file.paymentDetails.otherInfo || ''}</p>`;
+            }
+            paymentDetailsHtml += `</div>`;
+        }
+        
+        let footerHtml = '';
+        if (file.footerInfo && Object.values(file.footerInfo).some(v => v)) {
+            const footer = file.footerInfo;
+            const footerBg = 'bg-[#22333bff]';
+            footerHtml = `
+                <div class="p-4 ${footerBg} text-white text-xs rounded-b-lg flex-shrink-0">
+                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="flex items-center truncate"><i class="fas fa-phone w-5 text-center flex-shrink-0"></i><span class="ml-2">${footer.phone || ''}</span></div>
+                        <div class="flex items-center truncate"><i class="fas fa-envelope w-5 text-center flex-shrink-0"></i><span class="ml-2">${footer.email || ''}</span></div>
+                        <div class="flex items-center truncate"><i class="fas fa-globe w-5 text-center flex-shrink-0"></i><span class="ml-2">${footer.website || ''}</span></div>
+                        <div class="flex items-center truncate"><i class="fas fa-map-marker-alt w-5 text-center flex-shrink-0"></i><span class="ml-2">${footer.address || ''}</span></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const mainContent = `
+            <div class="flex justify-between items-start mb-6">
+                <div class="flex-shrink-0">${logoHtml}</div>
+                <div class="text-right pl-4 flex-grow min-w-0">
+                    <h2 class="text-xl font-bold uppercase text-gray-400">${file.type}</h2>
+                    <p class="text-xs word-break-all">${isInvoice ? 'Invoice' : 'Contract'} #: ${file.filename.replace('.pdf', '')}</p>
+                    <p class="text-xs mt-1"><strong>Project:</strong> ${projectName}</p>
+                    <p class="text-xs mt-1"><strong>Date:</strong> ${file.date}</p>
+                    <p class="text-xs mt-2"><strong>Status:</strong> <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">${file.status}</span></p>
+                </div>
+            </div>
+
+            <div class="mb-8 text-xs">
+                <h4 class="font-bold text-gray-500 mb-2">Bill To:</h4>
+                <div class="space-y-1">
+                    <div class="flex items-start"><i class="fas fa-building w-5 text-center text-gray-500 pt-0.5"></i><p class="font-semibold ml-2">${billTo.company || 'N/A'}</p></div>
+                    <div class="flex items-start"><i class="fas fa-map-marker-alt w-5 text-center text-gray-500 pt-0.5"></i><p class="ml-2">${billTo.address || 'N/A'}</p></div>
+                    <div class="flex items-start"><i class="fas fa-phone w-5 text-center text-gray-500 pt-0.5"></i><p class="ml-2">${billTo.phone || 'N/A'}</p></div>
+                    <div class="flex items-start"><i class="fas fa-globe w-5 text-center text-gray-500 pt-0.5"></i><p class="ml-2">${billTo.country || 'N/A'}</p></div>
+                </div>
+            </div>
+
+            <table class="w-full text-xs mb-6">
+                <thead class="bg-[#5e503fff] text-white">
+                    <tr>
+                        <th class="p-2 text-left font-bold">Description</th>
+                        <th class="p-2 text-right font-bold">Rate</th>
+                        <th class="p-2 text-right font-bold">Qty</th>
+                        <th class="p-2 text-right font-bold">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${lineItemsHtml}
+                </tbody>
+            </table>
+
+            <div class="grid grid-cols-2 gap-12">
+                <div>${paymentDetailsHtml}</div>
+                <div class="flex justify-end">
+                    <div class="w-full max-w-[180px] space-y-1 text-xs">
+                        <div class="flex justify-between"><span class="text-gray-500">Subtotal</span><span>${formatCurrency(file.subtotal || 0)}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-500">Discount</span><span>-${formatCurrency(file.discount || 0)}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-500">Tax (${file.tax || 0}%)</span><span>${formatCurrency(taxAmount)}</span></div>
+                        <hr class="my-1">
+                        <div class="flex justify-between font-bold text-base"><span class="">Total</span><span>${formatCurrency(file.value || 0)}</span></div>
+                    </div>
+                </div>
+            </div>
+
+            ${file.notes ? `
+            <div class="text-xs mt-10">
+                <h4 class="font-bold text-gray-500 mb-1">Notes</h4>
+                <p class="p-2 bg-gray-100 rounded">${file.notes}</p>
+            </div>
+            ` : ''}
+        `;
+
+        detailsContainer.innerHTML = `
+            <div class="bg-white rounded-lg h-full flex flex-col text-gray-800 text-sm">
+                <div class="p-6 flex-grow overflow-y-auto">
+                    ${mainContent}
+                </div>
+                ${footerHtml}
+            </div>
+             <a href="#" class="block w-full text-center mt-4 bg-[#5e503fff] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#22333bff] transition-colors">
+                <i class="fas fa-download mr-2"></i>Download
+            </a>
+        `;
+    }
+
+    function renderPermitsPage() {
+        const year = state.currentCalendarYear;
+        const month = state.currentCalendarMonth;
+
+        const searchTerm = permitSearchInput.value.toLowerCase();
+        const statusFilter = permitStatusFilter.value;
+
+        let projectPermits = state.files.filter(f => f.category === 'Permits' && f.projectId === state.currentProjectId);
+
+        if (statusFilter !== 'All') {
+            projectPermits = projectPermits.filter(p => p.status === statusFilter);
+        }
+
+        if (searchTerm) {
+            projectPermits = projectPermits.filter(p => 
+                p.permitNumber?.toLowerCase().includes(searchTerm) ||
+                p.permitType?.toLowerCase().includes(searchTerm) ||
+                p.responsiblePerson?.toLowerCase().includes(searchTerm) ||
+                p.agency?.toLowerCase().includes(searchTerm) ||
+                p.responsiblePersonPhone?.toLowerCase().includes(searchTerm) ||
+                p.responsiblePersonEmail?.toLowerCase().includes(searchTerm)
+            );
+        }
+
+        const date = new Date(year, month);
+        const monthName = date.toLocaleString('default', { month: 'long' });
+        
+        calendarMonthYearTitle.textContent = `${monthName} ${year}`;
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        let calendarHTML = `
+            <div class="calendar-grid text-sm">
+                <div class="text-center font-bold p-2">Sun</div>
+                <div class="text-center font-bold p-2">Mon</div>
+                <div class="text-center font-bold p-2">Tue</div>
+                <div class="text-center font-bold p-2">Wed</div>
+                <div class="text-center font-bold p-2">Thu</div>
+                <div class="text-center font-bold p-2">Fri</div>
+                <div class="text-center font-bold p-2">Sat</div>
+        `;
+        
+        let dayCells = '';
+        for (let i = 0; i < firstDay; i++) {
+            dayCells += `<div class="calendar-day other-month"></div>`;
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            let eventsHTML = '';
+            projectPermits.forEach(permit => {
+                const checkDate = (dateStr) => {
+                    if (!dateStr) return false;
+                    const d = new Date(dateStr + 'T00:00:00'); // Treat date as local
+                    return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
+                };
+
+                if (checkDate(permit.submissionDate)) {
+                    eventsHTML += `<div class="permit-event permit-event-submission" data-permit-id="${permit.id}">Sub: ${permit.permitNumber}</div>`;
+                }
+                if (checkDate(permit.approvalDate)) {
+                    eventsHTML += `<div class="permit-event permit-event-approval" data-permit-id="${permit.id}">Appr: ${permit.permitNumber}</div>`;
+                }
+                if (checkDate(permit.expirationDate)) {
+                    eventsHTML += `<div class="permit-event permit-event-expiration" data-permit-id="${permit.id}">Exp: ${permit.permitNumber}</div>`;
+                }
+            });
+
+            dayCells += `
+                <div class="calendar-day p-2">
+                    <div class="font-bold text-right">${day}</div>
+                    <div class="events">${eventsHTML}</div>
+                </div>
+            `;
+        }
+
+        calendarHTML += dayCells + '</div>';
+        permitCalendarView.innerHTML = calendarHTML;
+    }
+
+    function renderAuthSection() {
+        authSection.innerHTML = ''; // Clear previous content
+        if (state.currentUser && state.users[state.currentUser]) {
+            const user = state.users[state.currentUser];
+            authSection.innerHTML = `
+                <div class="text-center">
+                    <p class="text-sm font-semibold text-white mb-2 truncate">${user.name}</p>
+                    <button id="signout-btn" title="Sign Out" class="w-full bg-gunmetal text-white font-bold py-2 px-4 rounded-lg hover:bg-[#5e503fff] transition-colors flex items-center justify-center"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+            `;
+            document.getElementById('signout-btn').addEventListener('click', handleSignOut);
+        } else {
+            authSection.innerHTML = `
+                <button id="open-signin-modal-btn" title="Sign In" class="w-full bg-gunmetal text-white font-bold py-2 px-4 rounded-lg hover:bg-[#5e503fff] transition-colors flex items-center justify-center">
+                    <i class="fas fa-sign-in-alt"></i>
+                </button>
+            `;
+            document.getElementById('open-signin-modal-btn').addEventListener('click', () => {
+                toggleModal(signinModal, true);
+            });
+        }
+    }
+
+    function renderProjectSelector() {
+        projectSelect.innerHTML = '';
+        if (!state.currentUser) { // If no user, no projects
+            state.currentProjectId = null;
+            return;
+        }
+        const userPermissions = state.permissions[state.currentUser];
+        Object.values(state.projects).forEach(proj => {
+            if (userPermissions[proj.id]) {
+                const option = new Option(proj.name, proj.id);
+                projectSelect.add(option);
+            }
+        });
+        if (projectSelect.options.length > 0) {
+            if (state.currentProjectId && userPermissions[state.currentProjectId]) {
+                 projectSelect.value = state.currentProjectId;
+            } else {
+                state.currentProjectId = projectSelect.options[0].value;
+            }
+        } else {
+           state.currentProjectId = null;
+        }
+    }
+
+    function renderSidebar() {
+        if (!state.currentUser) {
+            sidebarNav.querySelectorAll('a.nav-link').forEach(link => link.classList.add('hidden'));
+            document.getElementById('admin-nav-links').classList.add('hidden');
+            customCategoriesContainer.innerHTML = '';
+            return;
+        }
+
+        const permissions = getCurrentPermissions();
+        const employeeForbiddenCategories = ['Permits', 'RFIs', 'Contracts'];
+        
+        sidebarNav.querySelectorAll('a.nav-link').forEach(link => {
+            const filter = link.dataset.filter;
+            const view = link.dataset.view;
+            const isForbidden = state.permissions[state.currentUser]?.[state.currentProjectId] === 'employee' && employeeForbiddenCategories.includes(filter);
+            
+            link.classList.toggle('hidden', isForbidden);
+        });
+        
+        document.getElementById('admin-nav-links').classList.toggle('hidden', !state.rolePermissions[state.currentUser]?.canManageUsers);
+        
+        renderCustomCategories();
+    }
+
+    function renderCustomCategories() {
+        customCategoriesContainer.innerHTML = '';
+        if (!state.currentProjectId) return;
+        
+        const projectCategories = state.categories[state.currentProjectId] || new Set();
+        const permissions = getCurrentPermissions();
+        
+        projectCategories.forEach(categoryName => {
+            const isEmployee = state.permissions[state.currentUser]?.[state.currentProjectId] === 'employee';
+            const isShared = state.employeeSharedCategories[state.currentProjectId]?.has(categoryName);
+
+            if (isEmployee && !isShared) {
+                return; // Don't render the category link for employees if it's not shared
+            }
+
+            const newLink = document.createElement('a');
+            newLink.href = '#';
+            newLink.dataset.view = 'files';
+            newLink.dataset.filter = categoryName;
+            newLink.className = 'nav-link custom-category-link flex justify-between items-center px-2 py-2 rounded-lg hover:bg-[#5e503fff]/50';
+            
+            const contentSpan = document.createElement('span');
+            contentSpan.className = 'flex items-center';
+            contentSpan.innerHTML = `<i class="fas fa-tag w-6 text-center"></i><span class="ml-2 text-xs">${categoryName}</span>`;
+            newLink.appendChild(contentSpan);
+
+            if (permissions.canDelete) {
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-category-btn text-gray-400 hover:text-white z-10';
+                deleteBtn.innerHTML = `<i class="fas fa-trash-alt fa-xs"></i>`;
+                deleteBtn.title = `Delete category: ${categoryName}`;
+                deleteBtn.onclick = (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    openConfirmModal(`Do you really want to delete the "${categoryName}" category and all its files? This action cannot be undone.`, () => deleteCategory(categoryName));
+                };
+                newLink.appendChild(deleteBtn);
+            }
+
+            newLink.addEventListener('click', handleNavLinkClick);
+            customCategoriesContainer.appendChild(newLink);
+        });
+    }
+
+    function renderFileList() {
+        fileListContainer.innerHTML = '';
+        if (!state.currentProjectId) { noDocsMessage.classList.remove('hidden'); return; }
+
+        let projectFiles = state.files.filter(f => f.projectId === state.currentProjectId);
+        
+        if (state.permissions[state.currentUser]?.[state.currentProjectId] === 'employee') {
+            const defaultForbiddenCategories = ['Permits', 'RFIs', 'Contracts'];
+            const defaultCategories = ['Models', 'Drawings', 'Permits', 'Contracts'];
+            const sharedCustomCategories = state.employeeSharedCategories[state.currentProjectId] || new Set();
+            
+            projectFiles = projectFiles.filter(file => {
+                if (defaultForbiddenCategories.includes(file.category)) {
+                    return false;
+                }
+                const isCustom = !defaultCategories.includes(file.category);
+                if (isCustom) {
+                    return sharedCustomCategories.has(file.category);
+                }
+                return true;
+            });
+        }
+
+        const filteredFiles = state.currentCategoryFilter === 'All' ? projectFiles.filter(f => f.category !== 'Contracts') : projectFiles.filter(f => f.category === state.currentCategoryFilter);
+        const permissions = getCurrentPermissions();
+
+        if (filteredFiles.length === 0) { noDocsMessage.classList.remove('hidden'); return; }
+        noDocsMessage.classList.add('hidden');
+
+        const groupedByDate = filteredFiles.reduce((acc, item) => {
+            if (!acc[item.date]) acc[item.date] = [];
+            acc[item.date].push(item);
+            return acc;
+        }, {});
+
+        Object.keys(groupedByDate).sort((a,b) => new Date(b) - new Date(a)).forEach(date => {
+            const dateHeader = document.createElement('div');
+            dateHeader.className = 'collapsible-header flex justify-between items-center p-2 rounded-md cursor-pointer hover:bg-black/10';
+            dateHeader.innerHTML = `<span class="font-semibold text-xs text-[#5e503fff]">${new Date(date).toDateString()}</span><i class="fas fa-chevron-down text-xs"></i>`;
+
+            const dateContent = document.createElement('div');
+            dateContent.className = 'collapsible-content pl-2 hidden';
+
+            groupedByDate[date].forEach(file => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-black/5';
+                fileItem.dataset.fileId = file.id;
+                fileItem.innerHTML = `
+                    <p class="font-semibold text-[#22333bff] truncate text-sm">${file.filename}</p>
+                    <div class="flex justify-between items-center mt-1">
+                        <p class="text-xs text-[#5e503fff]/80">${file.category}</p>
+                        <div class="flex items-center space-x-3">
+                            <button class="action-btn text-[#5e503fff] hover:text-[#0a0908ff]" title="Download"><i class="fas fa-download"></i></button>
+                            <button class="action-btn text-[#5e503fff] hover:text-blue-600 share-file-btn" title="Share" data-file-id="${file.id}"><i class="fas fa-share-alt"></i></button>
+                            ${permissions.canDelete ? `<button class="action-btn text-[#5e503fff] hover:text-red-600 delete-file-btn" data-file-id="${file.id}" title="Delete"><i class="fas fa-trash"></i></button>` : ''}
+                        </div>
+                    </div>`;
+                dateContent.appendChild(fileItem);
+            });
+            
+            dateHeader.addEventListener('click', () => {
+                dateContent.classList.toggle('hidden');
+                dateHeader.classList.toggle('open');
+            });
+            fileListContainer.appendChild(dateHeader);
+            fileListContainer.appendChild(dateContent);
+        });
+    }
+
+    function renderTeamManagement() {
+        const teamList = document.getElementById('team-member-list');
+        teamList.innerHTML = '';
+        Object.keys(state.users).forEach(userId => {
+            const user = state.users[userId];
+            const memberItem = document.createElement('div');
+            memberItem.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-100/50';
+            
+            let deleteButtonHtml = '';
+            if (userId !== state.currentUser) { // Prevent deleting the current user
+                deleteButtonHtml = `<button title="Remove member" class="delete-member-btn text-gray-400 hover:text-red-600" data-user-id="${userId}"><i class="fas fa-times-circle"></i></button>`;
+            }
+
+            memberItem.innerHTML = `
+                <div>
+                    <p class="font-semibold text-sm">${user.name}</p>
+                    <p class="text-xs text-gray-600">${user.email}</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs font-bold uppercase px-2 py-1 rounded-full bg-blue-200 text-blue-800">${userId}</span>
+                    ${deleteButtonHtml}
+                </div>`;
+            teamList.appendChild(memberItem);
+        });
+    }
+
+    function updateUIVisibility() {
+        const permissions = getCurrentPermissions();
+        
+        projectActions.classList.toggle('hidden', !permissions.canManageProjects || projectActions.classList.contains('hidden'));
+        shareProjectBtn.classList.toggle('hidden', !permissions.canManageUsers);
+        
+        const showUploadUI = state.currentView === 'files' && state.currentCategoryFilter !== 'Permits';
+        document.getElementById('upload-section').classList.toggle('hidden', !showUploadUI);
+        addCategoryBtn.classList.toggle('hidden', !permissions.canManageProjects || state.currentCategoryFilter !== 'All');
+        uploadButton.disabled = !permissions.canUpload;
+        
+        if (state.currentView === 'files' && state.currentCategoryFilter !== 'Permits') {
+            renderFileList();
+        }
+    }
+
+    function updatePreview(file) {
+        if (file) {
+            previewPlaceholder.classList.add('hidden');
+            previewContent.classList.remove('hidden');
+            previewFilename.textContent = file.filename;
+            const iconClass = getIconForFile(file.filename);
+            previewIcon.className = `fa-9x text-[#5e503fff] ${iconClass}`;
+            fullscreenIcon.className = `text-white ${iconClass}`;
+            fullscreenIcon.style.fontSize = '30rem';
+            const annotatableExts = ['pdf', 'png', 'jpg', 'jpeg'];
+            state.isCurrentFileAnnotatable = annotatableExts.includes(getFileExtension(file.filename));
+        } else {
+            previewPlaceholder.classList.remove('hidden');
+            previewContent.classList.add('hidden');
+            state.isCurrentFileAnnotatable = false;
+        }
+    }
+
+    // --- ACTIONS & LOGIC ---
+    function handleSignOut() {
+        state.currentUser = null;
+        state.currentProjectId = null;
+        renderApp();
+    }
+
+    function selectProject(projectId) {
+        state.currentProjectId = projectId;
+        if (state.currentView === 'contracts' || state.currentView === 'contracts-creator') {
+            state.currentView = 'contracts';
+            renderApp();
+        } else if (state.currentCategoryFilter === 'Permits') {
+            renderPermitsPage();
+        } else {
+            state.currentView = 'files';
+            state.currentCategoryFilter = 'All';
+            document.querySelector('.nav-link.nav-link-active')?.classList.remove('nav-link-active');
+            document.querySelector('.nav-link[data-filter="All"]').classList.add('nav-link-active');
+            projectActions.classList.add('hidden');
+            renderApp();
+        }
+    }
+
+    function handleNavLinkClick(e) {
+        e.preventDefault();
+        const link = e.currentTarget;
+        document.querySelector('.nav-link.nav-link-active')?.classList.remove('nav-link-active');
+        link.classList.add('nav-link-active');
+        
+        state.currentView = link.dataset.view;
+        if (state.currentView === 'files') {
+             state.currentCategoryFilter = link.dataset.filter;
+        }
+        clearPermitForm();
+        renderApp();
+    }
+    
+    function deleteCategory(categoryName) {
+        const oldFileCount = state.files.length;
+        state.files = state.files.filter(f => !(f.projectId === state.currentProjectId && f.category === categoryName));
+        const filesDeletedCount = oldFileCount - state.files.length;
+
+        state.categories[state.currentProjectId].delete(categoryName);
+        if(state.employeeSharedCategories[state.currentProjectId]) {
+            state.employeeSharedCategories[state.currentProjectId].delete(categoryName);
+        }
+
+        if (state.currentCategoryFilter === categoryName) {
+            state.currentCategoryFilter = 'All';
+            document.querySelector('.nav-link.nav-link-active').classList.remove('nav-link-active');
+            document.querySelector('.nav-link[data-filter="All"]').classList.add('nav-link-active');
+        }
+        showNotification(`Deleted category "${categoryName}" and its ${filesDeletedCount} file(s).`);
+        renderApp();
+    }
+    
+    function deleteFile(fileId) {
+        state.files = state.files.filter(f => f.id !== fileId);
+        renderFileList();
+    }
+
+    function handleSavePermit(e) {
+        e.preventDefault();
+        const permitPdfInput = document.getElementById('permit-pdf-input');
+        const permitNumberInput = document.getElementById('permit-number');
+
+        if (!state.editingPermitId && (!permitPdfInput.files || permitPdfInput.files.length === 0)) {
+            showNotification('Please select a Permit PDF to upload.', true);
+            return;
+        }
+        if (!permitNumberInput.value.trim()) {
+            showNotification('Please enter a Permit Number.', true);
+            return;
+        }
+
+        const permitData = {
+            projectId: state.currentProjectId,
+            category: 'Permits',
+            date: new Date().toISOString().split('T')[0],
+            permitType: document.getElementById('permit-type').value,
+            permitNumber: permitNumberInput.value.trim(),
+            agency: document.getElementById('permit-agency').value,
+            status: document.getElementById('permit-status').value,
+            submissionDate: document.getElementById('permit-submission-date').value,
+            approvalDate: document.getElementById('permit-approval-date').value,
+            expirationDate: document.getElementById('permit-expiration-date').value,
+            responsiblePerson: document.getElementById('permit-responsible-person').value,
+            responsiblePersonPhone: document.getElementById('permit-responsible-phone').value,
+            responsiblePersonEmail: document.getElementById('permit-responsible-email').value,
+        };
+
+        if (state.editingPermitId) {
+            const permitIndex = state.files.findIndex(f => f.id === state.editingPermitId);
+            if (permitIndex > -1) {
+                const existingPermit = state.files[permitIndex];
+                state.files[permitIndex] = { ...existingPermit, ...permitData };
+                if (permitPdfInput.files && permitPdfInput.files.length > 0) {
+                     state.files[permitIndex].filename = permitPdfInput.files[0].name;
+                }
+                showNotification(`Permit "${state.files[permitIndex].permitNumber}" updated.`);
+            }
+        } else {
+            permitData.id = `f-${Date.now()}`;
+            permitData.filename = permitPdfInput.files[0].name;
+            state.files.push(permitData);
+            showNotification(`Permit "${permitData.permitNumber}" added.`);
+        }
+
+        renderPermitsPage();
+        clearPermitForm();
+    }
+
+    function clearPermitForm() {
+        state.editingPermitId = null;
+        permitForm.reset();
+        permitFormTitle.textContent = 'Add New Permit';
+        savePermitIcon.className = 'fas fa-plus';
+        savePermitBtn.setAttribute('title', 'Save Permit');
+        
+        addPermitContainer.classList.remove('open');
+        const toggleIcon = togglePermitFormBtn.querySelector('i');
+        toggleIcon.classList.remove('fa-minus');
+        toggleIcon.classList.add('fa-plus');
+    }
+
+    function handlePermitCalendarClick(e) {
+        const eventEl = e.target.closest('.permit-event');
+        if (!eventEl) return;
+
+        const permitId = eventEl.dataset.permitId;
+        const permit = state.files.find(f => f.id === permitId);
+        if (!permit) return;
+
+        const contentEl = document.getElementById('permit-detail-content');
+        const statusColor = {
+            Approved: 'bg-green-100 text-green-800',
+            Submitted: 'bg-blue-100 text-blue-800',
+            Expired: 'bg-red-100 text-red-800',
+            Draft: 'bg-yellow-100 text-yellow-800'
+        }[permit.status] || 'bg-gray-100 text-gray-800';
+
+        contentEl.innerHTML = `
+            <p><strong>Permit #:</strong> ${permit.permitNumber}</p>
+            <p><strong>Type:</strong> ${permit.permitType}</p>
+            <p><strong>Status:</strong> <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor}">${permit.status}</span></p>
+            <p><strong>Agency:</strong> ${permit.agency || 'N/A'}</p>
+            <hr class="my-2">
+            <p><strong>Responsible:</strong> ${permit.responsiblePerson || 'N/A'}</p>
+            <p><strong>Phone:</strong> ${permit.responsiblePersonPhone || 'N/A'}</p>
+            <p><strong>Email:</strong> ${permit.responsiblePersonEmail || 'N/A'}</p>
+            <hr class="my-2">
+            <p><strong>Submission Date:</strong> ${permit.submissionDate || 'N/A'}</p>
+            <p><strong>Approval Date:</strong> ${permit.approvalDate || 'N/A'}</p>
+            <p><strong>Expiration Date:</strong> ${permit.expirationDate || 'N/A'}</p>
+            <hr class="my-2">
+            <div class="flex justify-end space-x-2 mt-4">
+                <button title="Edit" class="w-8 h-8 text-blue-600 hover:text-blue-900 edit-permit-btn flex items-center justify-center" data-permit-id="${permit.id}"><i class="fas fa-pen"></i></button>
+                <button title="Delete" class="w-8 h-8 text-red-600 hover:text-red-900 delete-permit-btn flex items-center justify-center" data-permit-id="${permit.id}"><i class="fas fa-trash"></i></button>
+            </div>
+        `;
+        toggleModal(permitDetailModal, true);
+    }
+
+    function handlePermitDetailModalClick(e) {
+        const editBtn = e.target.closest('.edit-permit-btn');
+        const deleteBtn = e.target.closest('.delete-permit-btn');
+
+        if (editBtn) {
+            toggleModal(permitDetailModal, false);
+            const permitId = editBtn.dataset.permitId;
+            const permit = state.files.find(f => f.id === permitId);
+            if (!permit) return;
+
+            state.editingPermitId = permitId;
+
+            document.getElementById('permit-type').value = permit.permitType;
+            document.getElementById('permit-number').value = permit.permitNumber;
+            document.getElementById('permit-agency').value = permit.agency;
+            document.getElementById('permit-status').value = permit.status;
+            document.getElementById('permit-submission-date').value = permit.submissionDate;
+            document.getElementById('permit-approval-date').value = permit.approvalDate;
+            document.getElementById('permit-expiration-date').value = permit.expirationDate;
+            document.getElementById('permit-responsible-person').value = permit.responsiblePerson;
+            document.getElementById('permit-responsible-phone').value = permit.responsiblePersonPhone || '';
+            document.getElementById('permit-responsible-email').value = permit.responsiblePersonEmail || '';
+            
+            permitFormTitle.textContent = `Edit Permit: ${permit.permitNumber}`;
+            savePermitIcon.className = 'fas fa-check';
+            savePermitBtn.setAttribute('title', 'Update Permit');
+            
+            addPermitContainer.classList.add('open');
+            const toggleIcon = togglePermitFormBtn.querySelector('i');
+            toggleIcon.classList.add('fa-minus');
+            toggleIcon.classList.remove('fa-plus');
+
+            permitsArea.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        if (deleteBtn) {
+            const permitId = deleteBtn.dataset.permitId;
+            const permit = state.files.find(f => f.id === permitId);
+            if (!permit) return;
+
+            toggleModal(permitDetailModal, false);
+            openConfirmModal(`Are you sure you want to delete permit "${permit.permitNumber}"?`, () => {
+                state.files = state.files.filter(f => f.id !== permitId);
+                showNotification(`Permit "${permit.permitNumber}" deleted.`);
+                renderPermitsPage();
+            });
+        }
+    }
+
+
+    // --- MODAL & ANNOTATION ---
+    function toggleModal(modal, show) {
+        modal.classList.toggle('hidden', !show);
+        modal.classList.toggle('flex', show);
+    }
+
+    function openConfirmModal(text, onConfirm) {
+        document.getElementById('confirm-modal-text').textContent = text;
+        state.confirmAction = onConfirm;
+        toggleModal(confirmModal, true);
+    }
+    
+    function activateTool(toolName, clickedBtn) {
+        currentTool = toolName;
+        state.placingCalloutInfo = null;
+        fullscreenContentWrapper.removeEventListener('mousemove', movePlacingCallout);
+        fullscreenContentWrapper.classList.remove('is-placing-callout');
+
+        toolBtns.forEach(btn => btn.classList.remove('tool-active'));
+        if(clickedBtn) clickedBtn.classList.add('tool-active');
+        fullscreenContentWrapper.className = 'w-full h-full flex items-center justify-center overflow-hidden relative';
+        if (currentTool === 'pan') { fullscreenContentWrapper.classList.add('is-panning'); }
+        else if (currentTool === 'callout') { fullscreenContentWrapper.classList.add('is-placing-callout'); }
+        else { fullscreenContentWrapper.classList.add('is-drawing'); }
+    };
+
+    function applyTransform() {
+        fullscreenContent.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
+        document.querySelectorAll('.callout-connector').forEach(line => {
+            updateCalloutConnector(line.dataset.calloutId);
+        });
+    };
+
+    function resizeCanvas() {
+        const iconRect = fullscreenIcon.getBoundingClientRect();
+        canvas.width = iconRect.width;
+        canvas.height = iconRect.height;
+        drawingHistory = [];
+        drawingHistory.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    };
+    
+    function getMousePos(e, targetElement) {
+        const rect = targetElement.getBoundingClientRect();
+        return {
+            x: (e.clientX - rect.left) / currentZoom,
+            y: (e.clientY - rect.top) / currentZoom
+        };
+    };
+
+    function startDrawing(e) {
+        isDrawing = true;
+        const pos = getMousePos(e, canvas);
+        startMouseX = e.clientX;
+        startMouseY = e.clientY;
+        
+        ctx.beginPath();
+        const baseLineWidth = (currentTool === 'eraser') ? 20 : currentStrokeSize;
+        ctx.lineWidth = baseLineWidth / currentZoom;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = colorPicker.value;
+
+        if (currentTool === 'eraser') {
+            ctx.globalCompositeOperation = 'destination-out';
+        } else {
+            ctx.globalCompositeOperation = 'source-over';
+        }
+        
+        ctx.moveTo(pos.x, pos.y);
+        
+        if (['line', 'rectangle', 'circle'].includes(currentTool)) {
+            const snapshot = drawingHistory[drawingHistory.length - 1];
+            ctx.putImageData(snapshot, 0, 0);
+        }
+    };
+
+    function draw(e) {
+        if (!isDrawing) return;
+        let pos = getMousePos(e, canvas);
+
+        if (currentTool === 'sketch' || currentTool === 'eraser') {
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            ctx.moveTo(pos.x, pos.y);
+        } else {
+            const lastState = drawingHistory[drawingHistory.length - 1];
+            ctx.putImageData(lastState, 0, 0);
+            
+            const startPos = getMousePos({ clientX: startMouseX, clientY: startMouseY }, canvas);
+            
+            if (currentTool === 'line' && isShiftPressed) {
+                const dx = Math.abs(pos.x - startPos.x);
+                const dy = Math.abs(pos.y - startPos.y);
+                if (dx > dy) { pos.y = startPos.y; } else { pos.x = startPos.x; }
+            }
+
+            ctx.beginPath();
+            if (currentTool === 'line') {
+                ctx.moveTo(startPos.x, startPos.y);
+                ctx.lineTo(pos.x, pos.y);
+            } else if (currentTool === 'rectangle') {
+                ctx.rect(startPos.x, startPos.y, pos.x - startPos.x, pos.y - startPos.y);
+            } else if (currentTool === 'circle') {
+                const radius = Math.sqrt(Math.pow(pos.x - startPos.x, 2) + Math.pow(pos.y - startPos.y, 2));
+                ctx.arc(startPos.x, startPos.y, radius, 0, 2 * Math.PI);
+            }
+            ctx.stroke();
+        }
+    };
+
+    function stopDrawing() {
+        if (!isDrawing) return;
+        isDrawing = false;
+        ctx.beginPath();
+        drawingHistory.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    };
+
+    function initiateCalloutPlacement(e) {
+        const anchorPoint = getMousePos(e, fullscreenContent);
+        const calloutId = `callout-${Date.now()}`;
+
+        const anchor = document.createElement('div');
+        anchor.className = 'callout-anchor';
+        anchor.style.left = `${anchorPoint.x}px`;
+        anchor.style.top = `${anchorPoint.y}px`;
+        anchor.dataset.calloutId = calloutId;
+        calloutLayer.appendChild(anchor);
+
+        const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+        polyline.setAttribute('class', 'callout-connector');
+        polyline.dataset.calloutId = calloutId;
+        calloutConnectorLayer.appendChild(polyline);
+        
+        state.placingCalloutInfo = { calloutId, anchorPoint, step: 2, polyline };
+        fullscreenContentWrapper.addEventListener('mousemove', movePlacingCallout);
+    }
+    
+    function movePlacingCallout(e) {
+        if (!state.placingCalloutInfo) return;
+        const { anchorPoint, polyline } = state.placingCalloutInfo;
+        const currentPos = getMousePos(e, fullscreenContent);
+        const points = `${anchorPoint.x},${anchorPoint.y} ${currentPos.x},${currentPos.y}`;
+        polyline.setAttribute('points', points);
+    }
+
+    function finalizeCalloutPlacement(e) {
+        if (!state.placingCalloutInfo) return;
+        const { calloutId, anchorPoint, polyline } = state.placingCalloutInfo;
+        const shoulderPoint = getMousePos(e, fullscreenContent);
+
+        fullscreenContentWrapper.removeEventListener('mousemove', movePlacingCallout);
+        
+        const box = document.createElement('div');
+        box.className = 'callout-box';
+        box.dataset.calloutId = calloutId;
+        box.dataset.anchorX = anchorPoint.x;
+        box.dataset.anchorY = anchorPoint.y;
+        box.dataset.shoulderX = shoulderPoint.x;
+        box.dataset.shoulderY = shoulderPoint.y;
+        
+        const horizontalLineLength = 30;
+        const textX = shoulderPoint.x > anchorPoint.x ? shoulderPoint.x + horizontalLineLength : shoulderPoint.x - 250 - horizontalLineLength;
+        const textY = shoulderPoint.y - 45; 
+        
+        box.style.left = `${textX}px`;
+        box.style.top = `${textY}px`;
+        box.innerHTML = `
+            <div class="callout-display-view p-2 text-left text-sm hidden cursor-pointer rounded-md" style="background-color: rgba(0,0,0,0.4); color: white; text-shadow: 1px 1px 1px rgba(0,0,0,0.7);"></div>
+            <div class="callout-edit-view">
+                <textarea class="w-full p-2 border border-gray-400 rounded-md text-sm text-gray-800" rows="3" placeholder="Add a comment..." style="background-color: rgba(255,255,255,0.9);"></textarea>
+                <div class="flex justify-end space-x-1 mt-1">
+                    <button title="Delete Callout" class="delete-callout-btn w-7 h-7 flex items-center justify-center text-white bg-red-500/80 hover:bg-red-600 rounded-full transition-colors"><i class="fas fa-trash fa-xs"></i></button>
+                    <button title="Save Callout" class="save-callout-btn w-7 h-7 flex items-center justify-center text-white bg-blue-500/80 hover:bg-blue-600 rounded-full transition-colors"><i class="fas fa-check fa-xs"></i></button>
+                </div>
+            </div>`;
+        calloutLayer.appendChild(box);
+        box.querySelector('textarea').focus();
+        
+        updateCalloutConnector(calloutId);
+        addCalloutEventListeners(box);
+        state.placingCalloutInfo = null;
+    }
+
+    function updateCalloutConnector(calloutId) {
+        const box = calloutLayer.querySelector(`.callout-box[data-callout-id="${calloutId}"]`);
+        const polyline = calloutConnectorLayer.querySelector(`polyline[data-callout-id="${calloutId}"]`);
+
+        if (!box || !polyline) return;
+
+        const anchorX = parseFloat(box.dataset.anchorX);
+        const anchorY = parseFloat(box.dataset.anchorY);
+        const shoulderX = parseFloat(box.dataset.shoulderX);
+        const shoulderY = parseFloat(box.dataset.shoulderY);
+
+        const boxRect = box.getBoundingClientRect();
+        const contentRect = fullscreenContent.getBoundingClientRect();
+        const boxX = (boxRect.left - contentRect.left) / currentZoom;
+        const boxWidth = boxRect.width / currentZoom;
+        
+        const connectorY = shoulderY;
+        const connectorX = shoulderX > anchorX ? shoulderX + 30 : shoulderX - 30;
+
+        const textConnectorX = shoulderX > anchorX ? boxX : boxX + boxWidth;
+
+        const points = `${anchorX},${anchorY} ${shoulderX},${shoulderY} ${connectorX},${connectorY} ${textConnectorX},${connectorY}`;
+        polyline.setAttribute('points', points);
+    }
+    
+    function addCalloutEventListeners(box) {
+        const calloutId = box.dataset.calloutId;
+        const editView = box.querySelector('.callout-edit-view');
+        const displayView = box.querySelector('.callout-display-view');
+        const saveBtn = box.querySelector('.save-callout-btn');
+        const deleteBtn = box.querySelector('.delete-callout-btn');
+        const textarea = box.querySelector('textarea');
+        
+        box.addEventListener('mousedown', (e) => {
+            if (!box.classList.contains('is-draggable')) return;
+            if (e.target.tagName === 'TEXTAREA' || e.target.closest('button')) return;
+            activeCalloutBox = box;
+            dragOffsetX = e.clientX - box.getBoundingClientRect().left;
+            dragOffsetY = e.clientY - box.getBoundingClientRect().top;
+        });
+
+        saveBtn.addEventListener('click', () => {
+            if (textarea.value.trim() === '') return;
+            displayView.textContent = textarea.value;
+            editView.classList.add('hidden');
+            displayView.classList.remove('hidden');
+            box.classList.add('is-draggable');
+        });
+
+        displayView.addEventListener('click', () => {
+            editView.classList.remove('hidden');
+            displayView.classList.add('hidden');
+            box.classList.remove('is-draggable');
+            textarea.focus();
+        });
+
+        deleteBtn.addEventListener('click', () => {
+             calloutLayer.querySelector(`.callout-anchor[data-callout-id="${calloutId}"]`)?.remove();
+             box.remove();
+             calloutConnectorLayer.querySelector(`polyline[data-callout-id="${calloutId}"]`)?.remove();
+        });
+    }
+
+    // --- INVOICE CREATOR LOGIC ---
+    function setCreatorDocType(type) {
+        state.creatorDocType = type;
+
+        const isInvoice = type === 'Invoice';
+        
+        // Update Toggle Buttons
+        docTypeToggles.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === type);
+        });
+
+        // Update Titles
+        document.getElementById('creator-doc-title').textContent = type;
+        
+        // Update Number Label and Input
+        const numberLabel = document.getElementById('creator-number-label');
+        const numberInput = document.getElementById('invoice-number');
+        const prefix = isInvoice ? 'INV' : 'CON';
+        numberLabel.textContent = isInvoice ? 'Invoice Number:' : 'Contract Number:';
+        if (!numberInput.value.startsWith('CON-') && !numberInput.value.startsWith('INV-')) {
+            numberInput.value = `${prefix}-${Date.now().toString().slice(-6)}`;
+        } else {
+            numberInput.value = `${prefix}-${numberInput.value.split('-')[1]}`;
+        }
+        
+        // Update Colors
+        const amountDue = document.getElementById('amount-due-container');
+        amountDue.classList.toggle('text-purple-600', isInvoice);
+        amountDue.classList.toggle('text-blue-600', !isInvoice);
+        saveInvoiceBtn.classList.toggle('bg-purple-600', isInvoice);
+        saveInvoiceBtn.classList.toggle('hover:bg-purple-700', isInvoice);
+        saveInvoiceBtn.classList.toggle('bg-blue-600', !isInvoice);
+        saveInvoiceBtn.classList.toggle('hover:bg-blue-700', !isInvoice);
+        
+        // Show/Hide Related Contract field
+        document.getElementById('related-contract-group').classList.toggle('hidden', !isInvoice);
+    }
+
+    function resetAndRenderInvoiceCreator() {
+        setCreatorDocType('Invoice'); // Default to Invoice
+        invoiceDateInput.valueAsDate = new Date();
+        invoiceStatusInput.value = 'Draft';
+        
+        invoiceCreatorArea.querySelectorAll('input[data-bill-to]').forEach(input => input.value = '');
+
+        state.invoiceLogo = null;
+        invoiceLogoPreview.classList.add('hidden');
+        invoiceLogoPlaceholder.classList.remove('hidden');
+        invoiceLogoInput.value = '';
+
+        if(state.currentProjectId && state.projects[state.currentProjectId]) {
+            document.getElementById('invoice-project-name').textContent = state.projects[state.currentProjectId].name;
+        }
+
+        lineItemsBody.innerHTML = '';
+        addNewLineItem();
+
+        document.getElementById('discount-input').value = '';
+        document.getElementById('tax-input').value = '';
+        document.getElementById('invoice-notes').value = '';
+        
+        // Reset background
+        invoiceSheet.style.backgroundImage = '';
+        invoiceSheet.classList.remove('has-background');
+        removeBgBtn.classList.add('hidden');
+        bgImageInput.value = '';
+
+        // Reset payment method
+        paymentMethodSelect.value = '';
+        paymentDetailsContainer.querySelectorAll('div[id$="-details"]').forEach(div => div.classList.add('hidden'));
+
+        // Reset footer
+        document.querySelectorAll('#invoice-footer [data-footer]').forEach(input => input.value = '');
+        
+        // Populate Related Contracts dropdown
+        const relatedContractSelect = document.getElementById('related-contract-select');
+        relatedContractSelect.innerHTML = '<option value="">None</option>'; // Clear previous options and add a default
+        const projectContracts = state.files.filter(f => f.projectId === state.currentProjectId && f.type === 'Contract');
+        projectContracts.forEach(contract => {
+            const option = new Option(contract.filename, contract.id);
+            relatedContractSelect.add(option);
+        });
+
+        calculateTotals();
+    }
+
+    function addNewLineItem() {
+        const row = document.createElement('tr');
+        row.className = 'line-item-row';
+        row.innerHTML = `
+            <td class="p-1"><input type="text" class="w-full p-1 description" placeholder="Enter an item name"></td>
+            <td class="p-1" style="width: 100px;"><input type="number" class="w-full p-1 text-right rate" placeholder="0.00"></td>
+            <td class="p-1" style="width: 70px;"><input type="number" class="w-full p-1 text-right qty" value="1"></td>
+            <td class="p-1 text-right" style="width: 100px;"><span class="line-total">$0.00</span></td>
+            <td class="p-1 text-center" style="width: 40px;"><button class="delete-line-item-btn text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button></td>
+        `;
+        lineItemsBody.appendChild(row);
+    }
+
+    function calculateTotals() {
+        let subtotal = 0;
+        lineItemsBody.querySelectorAll('.line-item-row').forEach(row => {
+            const rate = parseFloat(row.querySelector('.rate').value) || 0;
+            const qty = parseFloat(row.querySelector('.qty').value) || 0;
+            const lineTotal = rate * qty;
+            row.querySelector('.line-total').textContent = formatCurrency(lineTotal);
+            subtotal += lineTotal;
+        });
+
+        document.getElementById('subtotal-amount').textContent = formatCurrency(subtotal);
+
+        const discount = parseFloat(document.getElementById('discount-input').value) || 0;
+        const taxPercent = parseFloat(document.getElementById('tax-input').value) || 0;
+        
+        const subtotalAfterDiscount = subtotal - discount;
+        const taxAmount = subtotalAfterDiscount * (taxPercent / 100);
+        const total = subtotalAfterDiscount + taxAmount;
+
+        document.getElementById('total-amount').textContent = formatCurrency(total);
+        document.getElementById('amount-due').textContent = formatCurrency(total);
+    }
+
+    function handleSaveDocument() {
+        const docNumber = document.getElementById('invoice-number').value;
+        const docType = state.creatorDocType;
+
+        const billTo = {};
+        document.querySelectorAll('[data-bill-to]').forEach(el => billTo[el.dataset.billTo] = el.value);
+
+        if (!billTo.company) {
+            showNotification(`"Bill To" company name is required for the ${docType}.`, true);
+            return;
+        }
+
+        const lineItems = [];
+        let hasItems = false;
+        lineItemsBody.querySelectorAll('.line-item-row').forEach(row => {
+            const description = row.querySelector('.description').value.trim();
+            const rate = parseFloat(row.querySelector('.rate').value) || 0;
+            const qty = parseFloat(row.querySelector('.qty').value) || 0;
+            if (description && rate && qty) {
+                lineItems.push({ description, rate, qty, total: rate * qty });
+                hasItems = true;
+            }
+        });
+
+        if (!hasItems) {
+            showNotification('Please add at least one valid line item.', true);
+            return;
+        }
+
+        const subtotal = lineItems.reduce((acc, item) => acc + item.total, 0);
+        const discount = parseFloat(document.getElementById('discount-input').value) || 0;
+        const tax = parseFloat(document.getElementById('tax-input').value) || 0;
+        const total = (subtotal - discount) * (1 + tax / 100);
+
+        const paymentDetails = {
+            method: paymentMethodSelect.options[paymentMethodSelect.selectedIndex].text
+        };
+        document.querySelectorAll('#payment-details-container input, #payment-details-container textarea').forEach(input => {
+            if(input.offsetParent !== null) { // check if visible
+                paymentDetails[input.dataset.payment] = input.value;
+            }
+        });
+
+        const footerInfo = {};
+        document.querySelectorAll('#invoice-footer [data-footer]').forEach(el => {
+            footerInfo[el.dataset.footer] = el.value;
+        });
+
+        const newDoc = {
+            id: `${docType.charAt(0).toLowerCase()}-${Date.now()}`,
+            projectId: state.currentProjectId,
+            category: 'Contracts',
+            type: docType,
+            filename: `${docType === 'Invoice' ? 'INV' : 'CON'}-${docNumber}.pdf`,
+            date: document.getElementById('invoice-date').value,
+            value: total,
+            status: invoiceStatusInput.value,
+            parentContractId: docType === 'Invoice' ? document.getElementById('related-contract-select').value : undefined,
+            signer: docType === 'Contract' ? billTo.company : undefined,
+            billTo: billTo,
+            lineItems: lineItems,
+            subtotal: subtotal,
+            discount: discount,
+            tax: tax,
+            notes: document.getElementById('invoice-notes').value,
+            logo: state.invoiceLogo,
+            paymentDetails: paymentDetails,
+            footerInfo: footerInfo,
+        };
+
+        state.files.push(newDoc);
+        showNotification(`${docType} ${newDoc.filename} saved as draft.`);
+        state.currentView = 'contracts';
+        renderApp();
+    }
+
+
+    // --- EVENT LISTENERS ---
+    document.querySelectorAll('#sidebar-nav .nav-link').forEach(link => link.addEventListener('click', handleNavLinkClick));
+    
+    logoInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file && (file.type === 'image/jpeg' || file.type === 'image/png')) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                state.appLogo = event.target.result;
+                renderLogo();
+                showNotification('Logo updated successfully.');
+            };
+            reader.readAsDataURL(file);
+        } else {
+            showNotification('Invalid file type. Please select a JPEG or PNG.', true);
+        }
+    });
+
+    projectHeader.addEventListener('click', () => {
+        const permissions = getCurrentPermissions();
+        if (permissions.canManageProjects) { projectActions.classList.toggle('hidden'); }
+    });
+
+    addProjectBtn.addEventListener('click', (e) => { 
+        e.stopPropagation();
+        state.editingProjectId = null;
+        document.getElementById('modal-title').textContent = 'Add New Project';
+        document.getElementById('project-name-input').value = '';
+        toggleModal(projectModal, true); 
+    });
+    editProjectBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.editingProjectId = state.currentProjectId;
+        document.getElementById('modal-title').textContent = 'Edit Project';
+        document.getElementById('project-name-input').value = state.projects[state.currentProjectId].name;
+        toggleModal(projectModal, true);
+    });
+    document.getElementById('save-project-modal').addEventListener('click', () => {
+        const projectName = document.getElementById('project-name-input').value.trim();
+        if (!projectName) return;
+
+        if (state.editingProjectId) {
+            state.projects[state.editingProjectId].name = projectName;
+            showNotification(`Project "${projectName}" updated.`);
+        } else {
+            const newId = `proj-${Date.now()}`;
+            state.projects[newId] = { id: newId, name: projectName };
+            state.permissions.admin[newId] = 'admin';
+            state.categories[newId] = new Set();
+            state.employeeSharedCategories[newId] = new Set();
+            showNotification(`Project "${projectName}" created.`);
+        }
+        state.editingProjectId = null;
+        toggleModal(projectModal, false);
+        renderProjectSelector();
+    });
+
+    removeProjectBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const projectName = state.projects[state.currentProjectId].name;
+        openConfirmModal(`Are you sure you want to delete project "${projectName}"?`, () => {
+            const projectIdToDelete = state.currentProjectId;
+            delete state.projects[projectIdToDelete];
+            Object.keys(state.permissions).forEach(user => {
+                delete state.permissions[user][projectIdToDelete];
+            });
+            state.currentProjectId = Object.keys(state.projects)[0] || null;
+            showNotification(`Project "${projectName}" deleted.`);
+            renderApp();
+        });
+    });
+    
+    fileListContainer.addEventListener('click', (e) => {
+        const fileItem = e.target.closest('.file-item');
+        const deleteBtn = e.target.closest('.delete-file-btn');
+        const shareBtn = e.target.closest('.share-file-btn');
+
+        if (shareBtn) {
+            e.stopPropagation();
+            const fileId = shareBtn.dataset.fileId;
+            const file = state.files.find(f => f.id === fileId);
+            showNotification(`Sharing options for "${file.filename}" are not yet implemented.`);
+            return;
+        }
+
+        if (deleteBtn) {
+            e.stopPropagation();
+            const fileId = deleteBtn.dataset.fileId;
+            const file = state.files.find(f => f.id === fileId);
+            openConfirmModal(`Are you sure you want to delete the file "${file.filename}"?`, () => {
+                const activeFileItem = document.querySelector('.file-item-active');
+                if (activeFileItem && activeFileItem.dataset.fileId === fileId) {
+                    updatePreview(null);
+                }
+                deleteFile(fileId);
+                showNotification(`File "${file.filename}" was deleted.`);
+            });
+        } else if (fileItem) {
+            const fileId = fileItem.dataset.fileId;
+            const file = state.files.find(f => f.id === fileId);
+            updatePreview(file);
+            document.querySelectorAll('.file-item').forEach(item => item.classList.remove('file-item-active'));
+            fileItem.classList.add('file-item-active');
+        }
+    });
+
+    contractsArea.addEventListener('click', (e) => {
+        const row = e.target.closest('.contract-row');
+        if (row) {
+            const fileId = row.dataset.fileId;
+            const file = state.files.find(f => f.id === fileId);
+            renderContractDetails(file);
+            toggleModal(contractDetailModal, true);
+            document.querySelectorAll('.contract-row').forEach(r => r.classList.remove('contract-row-active'));
+            row.classList.add('contract-row-active');
+        }
+    });
+
+    // Team Management Listeners
+    teamManagementArea.addEventListener('click', e => {
+        const deleteBtn = e.target.closest('.delete-member-btn');
+        const inviteBtn = e.target.closest('#send-invite-btn');
+
+        if (deleteBtn) {
+            const userIdToDelete = deleteBtn.dataset.userId;
+            const userToDelete = state.users[userIdToDelete];
+            if (!userToDelete) return;
+
+            openConfirmModal(`Are you sure you want to remove ${userToDelete.name} from the team?`, () => {
+                delete state.users[userIdToDelete];
+                delete state.permissions[userIdToDelete];
+                showNotification(`${userToDelete.name} has been removed.`);
+                renderTeamManagement();
+            });
+        }
+
+        if (inviteBtn) {
+            const emailInput = document.getElementById('invite-email');
+            const roleSelect = document.getElementById('invite-role');
+            const email = emailInput.value.trim();
+            const role = roleSelect.value;
+
+            if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+                showNotification('Please enter a valid email address.', true);
+                return;
+            }
+
+            const userId = email.split('@')[0].toLowerCase().replace('.', '');
+            if (state.users[userId]) {
+                showNotification(`User with ID '${userId}' already exists.`, true);
+                return;
+            }
+
+            state.users[userId] = {
+                name: email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                email: email
+            };
+
+            state.permissions[userId] = { [state.currentProjectId]: role };
+            
+            showNotification(`Successfully invited ${state.users[userId].name}.`);
+            renderTeamManagement();
+            emailInput.value = '';
+        }
+    });
+
+    // Permit Page Listeners
+    togglePermitFormBtn.addEventListener('click', () => {
+        addPermitContainer.classList.toggle('open');
+        const icon = togglePermitFormBtn.querySelector('i');
+        icon.classList.toggle('fa-plus');
+        icon.classList.toggle('fa-minus');
+        if (!addPermitContainer.classList.contains('open')) {
+            clearPermitForm();
+        }
+    });
+    permitForm.addEventListener('submit', handleSavePermit);
+    permitCalendarView.addEventListener('click', handlePermitCalendarClick);
+    permitDetailModal.addEventListener('click', handlePermitDetailModalClick);
+    document.getElementById('close-permit-detail-modal').addEventListener('click', () => toggleModal(permitDetailModal, false));
+    permitSearchInput.addEventListener('input', () => renderPermitsPage());
+    permitStatusFilter.addEventListener('change', () => renderPermitsPage());
+    prevMonthBtn.addEventListener('click', () => {
+        state.currentCalendarMonth--;
+        if (state.currentCalendarMonth < 0) {
+            state.currentCalendarMonth = 11;
+            state.currentCalendarYear--;
+        }
+        renderPermitsPage();
+    });
+    nextMonthBtn.addEventListener('click', () => {
+        state.currentCalendarMonth++;
+        if (state.currentCalendarMonth > 11) {
+            state.currentCalendarMonth = 0;
+            state.currentCalendarYear++;
+        }
+        renderPermitsPage();
+    });
+
+
+    // General Upload and Category Listeners
+    addCategoryBtn.addEventListener('click', () => {
+        toggleModal(categoryModal, true);
+    });
+
+    document.getElementById('save-category-modal').addEventListener('click', () => {
+        const input = document.getElementById('category-name-input');
+        const categoryName = input.value.trim();
+        const shareCheckbox = document.getElementById('share-category-checkbox');
+        const shouldShare = shareCheckbox.checked;
+
+        if (!categoryName) {
+            showNotification('Category name cannot be empty.', true);
+            return;
+        }
+        
+        const existingCategories = Array.from(document.querySelectorAll('#sidebar-nav .nav-link'))
+            .filter(el => el.dataset.filter)
+            .map(el => el.dataset.filter.toLowerCase());
+
+        if (existingCategories.includes(categoryName.toLowerCase())) {
+            showNotification(`Category "${categoryName}" already exists.`, true);
+            return;
+        }
+
+        if (!state.categories[state.currentProjectId]) {
+            state.categories[state.currentProjectId] = new Set();
+        }
+        state.categories[state.currentProjectId].add(categoryName);
+
+        if (shouldShare) {
+            if (!state.employeeSharedCategories[state.currentProjectId]) {
+                state.employeeSharedCategories[state.currentProjectId] = new Set();
+            }
+            state.employeeSharedCategories[state.currentProjectId].add(categoryName);
+        }
+
+        renderCustomCategories();
+        toggleModal(categoryModal, false);
+        input.value = '';
+        shareCheckbox.checked = false;
+        showNotification(`Category "${categoryName}" created.`);
+    });
+    
+    uploadButton.addEventListener('click', () => {
+        const fileInput = document.getElementById('file-input');
+        if (fileInput.files.length === 0) {
+            showNotification('Please select a file to upload.', true);
+            return;
+        }
+        const file = fileInput.files[0];
+        const category = state.currentCategoryFilter;
+        
+        const defaultCategories = ['All', 'Models', 'Drawings', 'Permits', 'Contracts'];
+        const isCustomCategory = !defaultCategories.includes(category);
+
+        if (isCustomCategory) {
+            const allowedExtensions = ['pdf', 'jpeg', 'png', 'jpg'];
+            const fileExtension = getFileExtension(file.name);
+            if (!allowedExtensions.includes(fileExtension)) {
+                showNotification('Only PDF, JPEG, or PNG files are allowed in this category.', true);
+                return;
+            }
+        }
+
+        const newFile = {
+            id: `f-${Date.now()}`,
+            projectId: state.currentProjectId,
+            category: category,
+            filename: file.name,
+            date: new Date().toISOString().split('T')[0]
+        };
+        state.files.push(newFile);
+        renderFileList();
+        fileInput.value = ''; // Reset file input
+        showNotification(`File "${file.name}" uploaded to ${category}.`);
+    });
+
+    // Share Modal Listeners
+    function renderShareModal() {
+        const projectNameSpan = document.getElementById('share-modal-project-name');
+        const memberListDiv = document.getElementById('member-list');
+
+        projectNameSpan.textContent = state.projects[state.currentProjectId].name;
+        memberListDiv.innerHTML = '';
+
+        Object.keys(state.permissions).forEach(userId => {
+            const userProjectPermissions = state.permissions[userId];
+            if (userProjectPermissions[state.currentProjectId]) {
+                const user = state.users[userId];
+                if (!user) return; // Skip if user was deleted but permissions remain
+                
+                const role = userProjectPermissions[state.currentProjectId];
+                const memberItem = document.createElement('div');
+                memberItem.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-gray-100/50';
+
+                const canBeModified = userId !== 'admin'; // Rule: admin cannot be modified
+                
+                memberItem.innerHTML = `
+                    <div>
+                        <p class="font-semibold text-sm">${user.name}</p>
+                        <p class="text-xs text-gray-600">${user.email}</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <select class="share-role-select text-xs p-1 rounded border-gray-300 shadow-sm" data-user-id="${userId}" ${!canBeModified ? 'disabled' : ''}>
+                            <option value="admin" ${role === 'admin' ? 'selected' : ''}>Admin</option>
+                            <option value="manager" ${role === 'manager' ? 'selected' : ''}>Manager</option>
+                            <option value="employee" ${role === 'employee' ? 'selected' : ''}>Employee</option>
+                        </select>
+                        ${canBeModified ? `<button title="Remove access" class="remove-access-btn text-gray-400 hover:text-red-600" data-user-id="${userId}"><i class="fas fa-times-circle"></i></button>` : ''}
+                    </div>`;
+                memberListDiv.appendChild(memberItem);
+            }
+        });
+    }
+
+    shareModal.addEventListener('click', (e) => {
+        const removeBtn = e.target.closest('.remove-access-btn');
+        if (removeBtn) {
+            const userId = removeBtn.dataset.userId;
+            delete state.permissions[userId][state.currentProjectId];
+            showNotification(`Removed ${state.users[userId].name}'s access.`);
+            renderShareModal();
+        }
+    });
+
+    shareModal.addEventListener('change', (e) => {
+        const roleSelect = e.target.closest('.share-role-select');
+        if (roleSelect) {
+            const userId = roleSelect.dataset.userId;
+            const newRole = roleSelect.value;
+            state.permissions[userId][state.currentProjectId] = newRole;
+            showNotification(`Updated ${state.users[userId].name}'s role to ${newRole}.`);
+            renderShareModal();
+        }
+    });
+
+    document.getElementById('invite-member-btn').addEventListener('click', () => {
+        const emailInput = document.getElementById('invite-email-input');
+        const email = emailInput.value.trim();
+        if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+            showNotification('Please enter a valid email address.', true);
+            return;
+        }
+
+        const userId = email.split('@')[0].toLowerCase().replace('.', '');
+        if (!state.users[userId]) {
+            state.users[userId] = {
+                name: email.split('@')[0].replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                email: email
+            };
+            state.permissions[userId] = {};
+        }
+
+        if (state.permissions[userId][state.currentProjectId]) {
+            showNotification(`${state.users[userId].name} already has access.`, true);
+        } else {
+            state.permissions[userId][state.currentProjectId] = 'employee'; // Default role
+            showNotification(`Invited ${state.users[userId].name} to the project.`);
+            renderShareModal();
+        }
+        emailInput.value = '';
+    });
+
+
+    shareProjectBtn.addEventListener('click', (e) => { 
+        e.stopPropagation(); 
+        renderShareModal();
+        toggleModal(shareModal, true); 
+    });
+
+    document.getElementById('close-share-modal').addEventListener('click', () => toggleModal(shareModal, false));
+    
+    document.getElementById('cancel-project-modal').addEventListener('click', () => toggleModal(projectModal, false));
+    document.getElementById('cancel-category-modal').addEventListener('click', () => toggleModal(categoryModal, false));
+    document.getElementById('cancel-confirm-modal').addEventListener('click', () => {
+        toggleModal(confirmModal, false);
+        state.confirmAction = null;
+    });
+    document.getElementById('close-contract-detail-modal').addEventListener('click', () => toggleModal(contractDetailModal, false));
+
+    confirmDeleteBtn.addEventListener('click', () => {
+        if (state.confirmAction) { state.confirmAction(); }
+        toggleModal(confirmModal, false);
+        state.confirmAction = null;
+    });
+    
+    // Auth Modal Listeners
+    closeModalBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const modalId = btn.dataset.modalId;
+            toggleModal(document.getElementById(modalId), false);
+        });
+    });
+
+    gotoSignupBtn.addEventListener('click', () => {
+        toggleModal(signinModal, false);
+        toggleModal(signupModal, true);
+    });
+
+    gotoSigninBtn.addEventListener('click', () => {
+        toggleModal(signupModal, false);
+        toggleModal(signinModal, true);
+    });
+
+    signinForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        // Placeholder for backend logic
+        const email = document.getElementById('signin-email').value;
+        const userId = email.split('@')[0].toLowerCase().replace('.', '');
+        if (state.users[userId]) {
+            state.currentUser = userId; // "Log in" the user
+            showNotification(`Welcome back, ${state.users[userId].name}!`);
+            toggleModal(signinModal, false);
+            renderApp(); // Re-render the app to reflect permissions and UI changes
+        } else {
+            showNotification('Invalid email or password.', true);
+        }
+    });
+
+    signupForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        // Placeholder for backend logic
+        const password = document.getElementById('signup-password').value;
+        const confirmPassword = document.getElementById('signup-confirm-password').value;
+
+        if (password !== confirmPassword) {
+            showNotification('Passwords do not match.', true);
+            return;
+        }
+        
+        showNotification('Account created successfully! Please sign in.');
+        toggleModal(signupModal, false);
+        toggleModal(signinModal, true);
+    });
+
+    // Annotation Listeners
+    filePreviewArea.addEventListener('click', () => { 
+        if (!previewContent.classList.contains('hidden')) {
+            fullscreenToolbarContainer.classList.toggle('hidden', !state.isCurrentFileAnnotatable);
+            toggleModal(fullscreenModal, true);
+            setTimeout(resizeCanvas, 50);
+        }
+    });
+
+    closeFullscreenBtn.addEventListener('click', () => {
+        toggleModal(fullscreenModal, false);
+        currentZoom = 1; translateX = 0; translateY = 0;
+        applyTransform();
+        activateTool('pan', panToolBtn);
+        if (!toolsContainer.classList.contains('opacity-0')) toolsContainer.classList.add('opacity-0', 'invisible', 'scale-x-0');
+        calloutLayer.innerHTML = '';
+        calloutConnectorLayer.innerHTML = '';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    });
+
+    mainToolBtn.addEventListener('click', () => { toolsContainer.classList.toggle('opacity-0'); toolsContainer.classList.toggle('invisible'); toolsContainer.classList.toggle('scale-x-0'); });
+    
+    panToolBtn.addEventListener('click', () => activateTool('pan', panToolBtn));
+    calloutToolBtn.addEventListener('click', () => activateTool('callout', calloutToolBtn));
+    sketchToolBtn.addEventListener('click', () => activateTool('sketch', sketchToolBtn));
+    lineToolBtn.addEventListener('click', () => activateTool('line', lineToolBtn));
+    rectToolBtn.addEventListener('click', () => activateTool('rectangle', rectToolBtn));
+    circleToolBtn.addEventListener('click', () => activateTool('circle', circleToolBtn));
+    eraserToolBtn.addEventListener('click', () => activateTool('eraser', eraserToolBtn));
+    undoBtn.addEventListener('click', () => {
+        if (drawingHistory.length > 1) {
+            drawingHistory.pop();
+            ctx.putImageData(drawingHistory[drawingHistory.length - 1], 0, 0);
+        }
+    });
+    strokeSizePicker.addEventListener('change', (e) => { currentStrokeSize = parseInt(e.target.value, 10); });
+    
+    fullscreenContentWrapper.addEventListener('mousedown', (e) => { 
+        if (currentTool === 'pan') { 
+            isPanning = true; 
+            startX = e.clientX - translateX; 
+            startY = e.clientY - translateY; 
+        }
+    });
+
+    window.addEventListener('mousemove', (e) => { 
+        if (isPanning) { 
+            translateX = e.clientX - startX; 
+            translateY = e.clientY - startY; 
+            applyTransform(); 
+        }
+        if (activeCalloutBox) {
+            const contentRect = fullscreenContent.getBoundingClientRect();
+            const newX = (e.clientX - contentRect.left - dragOffsetX) / currentZoom;
+            const newY = (e.clientY - contentRect.top - dragOffsetY) / currentZoom;
+            activeCalloutBox.style.left = `${newX}px`;
+            activeCalloutBox.style.top = `${newY}px`;
+            updateCalloutConnector(activeCalloutBox.dataset.calloutId);
+        }
+    });
+    window.addEventListener('mouseup', () => { 
+        isPanning = false; 
+        activeCalloutBox = null;
+    });
+
+    window.addEventListener('keydown', (e) => { if(e.key === 'Shift') isShiftPressed = true; });
+    window.addEventListener('keyup', (e) => { if(e.key === 'Shift') isShiftPressed = false; });
+    
+    zoomInBtn.addEventListener('click', () => { currentZoom = Math.min(currentZoom + 0.1, 3); applyTransform(); });
+    zoomOutBtn.addEventListener('click', () => { currentZoom = Math.max(currentZoom - 0.1, 0.2); applyTransform(); });
+    fullscreenModal.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if (e.deltaY < 0) zoomInBtn.click();
+        else zoomOutBtn.click();
+    });
+
+    fullscreenContentWrapper.addEventListener('click', (e) => {
+        if (e.target.closest('.callout-box') || e.target.closest('#fullscreen-toolbar-container')) {
+            return;
+        }
+
+        if (currentTool === 'callout') {
+            if (state.placingCalloutInfo) {
+                finalizeCalloutPlacement(e);
+            } 
+            else if (e.target.closest('#fullscreen-content')) {
+                initiateCalloutPlacement(e);
+            }
+        }
+    });
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseleave', stopDrawing);
+
+    // Invoice Creator Listeners
+    goToCreatorBtn.addEventListener('click', () => {
+        state.currentView = 'contracts-creator';
+        renderApp();
+    });
+    cancelCreatorBtn.addEventListener('click', () => {
+        state.currentView = 'contracts';
+        renderApp();
+    });
+    saveInvoiceBtn.addEventListener('click', handleSaveDocument);
+    docTypeToggles.forEach(btn => btn.addEventListener('click', (e) => setCreatorDocType(e.currentTarget.dataset.type)));
+    addLineItemBtn.addEventListener('click', addNewLineItem);
+    invoiceCreatorArea.addEventListener('input', (e) => {
+        if (e.target.closest('.line-item-row') || e.target.id === 'discount-input' || e.target.id === 'tax-input') {
+            calculateTotals();
+        }
+    });
+    lineItemsBody.addEventListener('click', (e) => {
+        if (e.target.closest('.delete-line-item-btn')) {
+            e.target.closest('.line-item-row').remove();
+            calculateTotals();
+        }
+    });
+    invoiceLogoDropzone.addEventListener('click', () => invoiceLogoInput.click());
+    invoiceLogoInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                state.invoiceLogo = event.target.result;
+                invoiceLogoPreview.src = state.invoiceLogo;
+                invoiceLogoPreview.classList.remove('hidden');
+                invoiceLogoPlaceholder.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Background Image Listeners
+    changeBgBtn.addEventListener('click', () => bgImageInput.click());
+    removeBgBtn.addEventListener('click', () => {
+        invoiceSheet.style.backgroundImage = '';
+        invoiceSheet.classList.remove('has-background');
+        removeBgBtn.classList.add('hidden');
+        bgImageInput.value = '';
+    });
+    bgImageInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            invoiceSheet.style.backgroundImage = `url(${event.target.result})`;
+            invoiceSheet.style.backgroundSize = 'cover';
+            invoiceSheet.style.backgroundPosition = 'center';
+            invoiceSheet.classList.add('has-background');
+            removeBgBtn.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Payment Method Listener
+    paymentMethodSelect.addEventListener('change', (e) => {
+        const selectedMethod = e.target.value;
+        paymentDetailsContainer.querySelectorAll('div[id$="-details"]').forEach(div => {
+            div.classList.add('hidden');
+        });
+        if (selectedMethod) {
+            document.getElementById(`${selectedMethod}-details`).classList.remove('hidden');
+        }
+    });
+    
+    // --- INITIALIZATION ---
+    renderApp();
+    activateTool('pan', panToolBtn);
+});
+</script>
+</body>
+</html>
