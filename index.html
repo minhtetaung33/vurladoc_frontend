@@ -2564,9 +2564,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    signupForm.addEventListener('submit', (e) => {
+    signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        // Placeholder for backend logic
+        const firstName = document.getElementById('signup-firstname').value;
+        const lastName = document.getElementById('signup-lastname').value;
+        const email = document.getElementById('signup-email').value;
         const password = document.getElementById('signup-password').value;
         const confirmPassword = document.getElementById('signup-confirm-password').value;
 
@@ -2574,10 +2576,31 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('Passwords do not match.', true);
             return;
         }
-        
-        showNotification('Account created successfully! Please sign in.');
-        toggleModal(signupModal, false);
-        toggleModal(signinModal, true);
+
+        const userData = { firstName, lastName, email, password };
+
+        try {
+            const response = await fetch('http://localhost:5000/api/signup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(userData),
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                showNotification(result.message);
+                toggleModal(signupModal, false);
+                toggleModal(signinModal, true);
+            } else {
+                showNotification(result.message, true);
+            }
+        } catch (error) {
+            console.error('Signup Error:', error);
+            showNotification('Could not connect to the server. Is it running?', true);
+        }
     });
 
     // Annotation Listeners
