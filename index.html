@@ -625,6 +625,10 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // --- CONFIGURATION ---
+    // IMPORTANT: Replace with the actual local IP address of your backend computer.
+    const API_BASE_URL = 'http://192.168.4.22:5000'; 
+
     // --- STATE MANAGEMENT ---
     const now = new Date();
     let state = {
@@ -2580,7 +2584,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const userData = { firstName, lastName, email, password };
 
         try {
-            const response = await fetch('http://192.168.4.22:5000/api/signup', {
+            const response = await fetch(`${API_BASE_URL}/api/signup`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
